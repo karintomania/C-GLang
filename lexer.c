@@ -12,6 +12,8 @@ enum TokenType {
   TKN_DIV,
   TKN_MINUS,
   TKN_NUMBER,
+  TKN_LPAREN,
+  TKN_RPAREN,
 };
 
 typedef struct {
@@ -74,20 +76,24 @@ int run_lexer(const char *str, Token *tokens) {
       }
     }
 
-    if (*str == '+') {
+    switch (*str) {
+    case '+':
       tokens[token_idx++] = (Token){.type = TKN_PLUS};
       continue;
-    }
-    if (*str == '*') {
+    case '*':
       tokens[token_idx++] = (Token){.type = TKN_MULT};
       continue;
-    }
-    if (*str == '-') {
+    case '-':
       tokens[token_idx++] = (Token){.type = TKN_MINUS};
       continue;
-    }
-    if (*str == '/') {
+    case '/':
       tokens[token_idx++] = (Token){.type = TKN_DIV};
+      continue;
+    case '(':
+      tokens[token_idx++] = (Token){.type = TKN_LPAREN};
+      continue;
+    case ')':
+      tokens[token_idx++] = (Token){.type = TKN_RPAREN};
       continue;
     }
   }

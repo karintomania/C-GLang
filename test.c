@@ -35,6 +35,18 @@ int test_run_lexer(void) {
   assert(token_equals(&tokens[1], &(Token){.type = TKN_MINUS}));
   assert(token_equals(&tokens[2], &(Token){.type = TKN_NUMBER, .num = -2.1}));
 
+  // test parenthesis
+  str = "(1 + 2)";
+  token_count = run_lexer(str, tokens);
+
+  assert(5 == token_count);
+
+  assert(token_equals(&tokens[0], &(Token){.type = TKN_LPAREN}));
+  assert(token_equals(&tokens[1], &(Token){.type = TKN_NUMBER, .num = 1}));
+  assert(token_equals(&tokens[2], &(Token){.type = TKN_PLUS}));
+  assert(token_equals(&tokens[3], &(Token){.type = TKN_NUMBER, .num = 2}));
+  assert(token_equals(&tokens[4], &(Token){.type = TKN_RPAREN}));
+
   return 1;
 }
 
