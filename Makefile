@@ -1,6 +1,6 @@
 .PHONY: test run uninstall
 
-CFLAGS=-Wall -Wpedantic -Wextra --std=c99
+CFLAGS=-Wall -Wpedantic -Wextra --std=c11
 
 cglang:
 	clang main.c -o cglang $(CFLAGS)

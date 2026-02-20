@@ -1,4 +1,5 @@
-#include "cglang.c"
+#include "lexer.c"
+#include "parser.c"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,13 +15,13 @@ int test_run_lexer(void) {
 
   assert(7 == token_count);
 
-  assert(Token_equals(&tokens[0], &(Token){.type = NUMBER, .num = 1}));
-  assert(Token_equals(&tokens[1], &(Token){.type = MINUS}));
-  assert(Token_equals(&tokens[2], &(Token){.type = NUMBER, .num = 2.1}));
-  assert(Token_equals(&tokens[3], &(Token){.type = MULT}));
-  assert(Token_equals(&tokens[4], &(Token){.type = NUMBER, .num = -3}));
-  assert(Token_equals(&tokens[5], &(Token){.type = DIV}));
-  assert(Token_equals(&tokens[6], &(Token){.type = NUMBER, .num = 100}));
+  assert(token_equals(&tokens[0], &(Token){.type = TKN_NUMBER, .num = 1}));
+  assert(token_equals(&tokens[1], &(Token){.type = TKN_MINUS}));
+  assert(token_equals(&tokens[2], &(Token){.type = TKN_NUMBER, .num = 2.1}));
+  assert(token_equals(&tokens[3], &(Token){.type = TKN_MULT}));
+  assert(token_equals(&tokens[4], &(Token){.type = TKN_NUMBER, .num = -3}));
+  assert(token_equals(&tokens[5], &(Token){.type = TKN_DIV}));
+  assert(token_equals(&tokens[6], &(Token){.type = TKN_NUMBER, .num = 100}));
 
   // test minus signs
   str = "-1 - -2.1";
@@ -28,14 +29,34 @@ int test_run_lexer(void) {
 
   assert(3 == token_count);
 
-  assert(Token_equals(&tokens[0], &(Token){.type = NUMBER, .num = -1}));
-  assert(Token_equals(&tokens[1], &(Token){.type = MINUS}));
-  assert(Token_equals(&tokens[2], &(Token){.type = NUMBER, .num = -2.1}));
+  assert(token_equals(&tokens[0], &(Token){.type = TKN_NUMBER, .num = -1}));
+  assert(token_equals(&tokens[1], &(Token){.type = TKN_MINUS}));
+  assert(token_equals(&tokens[2], &(Token){.type = TKN_NUMBER, .num = -2.1}));
 
   return 1;
 }
 
-// Testing framework
+/*---------------------
+ Parser test
+------------------------*/
+
+int test_run_parser(void) {
+  Token tokens[MAX_TOKENS];
+  int result = run_lexer("1 + 2", tokens);
+  assert(result == 3);
+
+  AST *ast = run_parser(tokens);
+
+  assert(ast->type == AST_TYPE_NUMBER);
+
+  printAst(ast);
+
+  return 1;
+}
+
+/*---------------------
+ Testing framework
+------------------------*/
 #define MAX_TESTS 1000
 
 typedef struct {
@@ -48,6 +69,7 @@ typedef struct {
 int main(void) {
   TestFunc tests[] = {
     FUNC_DEF(test_run_lexer),
+    FUNC_DEF(test_run_parser),
     {NULL, ""},
   };
 
