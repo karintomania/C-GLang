@@ -1,9 +1,14 @@
-#include "lexer.c"
-#include "parser.c"
+#define UNITY_BUILD
+
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+
+#include "lexer.c"
+#include "parser.c"
+#include "interpreter.c"
 
 /*---------------------
  Lexer test
@@ -89,6 +94,43 @@ int test_run_parser(void) {
 
   deinitAst(ast);
 
+  result = run_lexer("(1 + 2) * 3", tokens);
+
+  ast = run_parser(tokens, result);
+
+  return 1;
+}
+
+/*---------------------
+ Interpreter test
+------------------------*/
+
+int test_run_interpreter(void) {
+  Token tokens[MAX_TOKENS];
+  int result = run_lexer("1 + 2", tokens);
+  AST *ast = run_parser(tokens, result);
+  float res = interpret(ast);
+
+  assert(fabs(res - 3) < 0.1);
+
+  result = run_lexer("1 + 2 * 3", tokens);
+  ast = run_parser(tokens, result);
+  res = interpret(ast);
+
+  assert(fabs(res - 7) < 0.1);
+
+  result = run_lexer("1 / 2 - 3", tokens);
+  ast = run_parser(tokens, result);
+  res = interpret(ast);
+
+  assert(fabs(res - -2.5) < 0.1);
+
+  result = run_lexer("1 / (2 - 3)", tokens);
+  ast = run_parser(tokens, result);
+  res = interpret(ast);
+
+  assert(fabs(res - -1) < 0.1);
+
   return 1;
 }
 
@@ -108,6 +150,7 @@ int main(void) {
   TestFunc tests[] = {
     FUNC_DEF(test_run_lexer),
     FUNC_DEF(test_run_parser),
+    FUNC_DEF(test_run_interpreter),
     {NULL, ""},
   };
 
@@ -116,11 +159,12 @@ int main(void) {
 
     if (test.ptr != NULL) {
       test.ptr();
+      printf("%s passed!\n", test.name);
     } else {
       break;
     }
   }
   printf("All tests passed.\n");
-  return 1;
+  return 0;
 }
 

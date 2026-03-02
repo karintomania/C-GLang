@@ -1,2 +1,4 @@
 cglang
 test
+*dSYM*
+.vscode

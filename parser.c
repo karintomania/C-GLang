@@ -1,12 +1,12 @@
+#ifndef UNITY_BUILD
+#include "lexer.c"
+#endif
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "lexer.c"
-
-#pragma once
 
 enum OperatorType {
   OP_PLUS,
@@ -80,7 +80,7 @@ int parser_token_count;
 
 AST *parse_term2(Token *tokens);
 AST *parse_term1(Token *tokens);
-AST *parse_number(Token *tokens);
+AST *parse_term0(Token *tokens);
 
 AST *parse_term2(Token *tokens) {
   current = parse_term1(tokens);
@@ -109,7 +109,7 @@ AST *parse_term2(Token *tokens) {
 }
 
 AST *parse_term1(Token *tokens) {
-  current = parse_number(tokens);
+  current = parse_term0(tokens);
 
   while (position < parser_token_count) {
       AST *ast = malloc(sizeof(AST));
@@ -124,7 +124,7 @@ AST *parse_term1(Token *tokens) {
       .astBO = {
         .operator = (t.type == TKN_MULT) ? OP_MULT : OP_DIV,
         .left = current,
-        .right = parse_number(tokens),
+        .right = parse_term0(tokens),
       },
     };
 
@@ -134,19 +134,31 @@ AST *parse_term1(Token *tokens) {
   return current;
 }
 
-AST *parse_number(Token *tokens) {
+AST *parse_term0(Token *tokens) {
   Token t = tokens[position++];
   
-  AST *ast = malloc(sizeof(AST));
+  if (t.type == TKN_LPAREN) {
+    current = parse_term2(tokens);
 
-  *ast = (AST){
-    .type = AST_TYPE_NUMBER,
-    .astNum = {
-      .number = t.num,
-    },
-  };
+    t = tokens[position++];
+    assert(t.type == TKN_RPAREN);
 
-  return ast;
+    return current;
+  }
+
+  if (t.type == TKN_NUMBER) {
+    AST *ast = malloc(sizeof(AST));
+
+    *ast = (AST){
+      .type = AST_TYPE_NUMBER,
+      .astNum = {
+        .number = t.num,
+      },
+    };
+    return ast;
+  }
+
+  return NULL; // shouldn't reach here.
 }
 
 
