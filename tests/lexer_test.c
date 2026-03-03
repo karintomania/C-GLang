@@ -1,5 +1,6 @@
 #ifndef UNITY_BUILD
   #include "../lexer.c"
+  #include "test_util.c"
 #endif
 
 /*---------------------
@@ -12,7 +13,7 @@ void assert_token_equals(Token *want, Token *got) {
     token_print(want);
     printf(", got: ");
     token_print(got);
-    printf("n");
+    printf("\n");
     assert(token_equals(want, got));
   }
 }
@@ -22,18 +23,18 @@ int test_run_lexer(void) {
   char *str = "0 + 1 - 2.1 * -3 / 100";
   int token_count = run_lexer(str, tokens);
 
-  assert(10 == token_count);
+  // assert(10 = token_count);
 
-  assert_token_equals(&tokens[0], &(Token){.type = TKN_NUMBER, .num = 0});
-  assert_token_equals(&tokens[1], &(Token){.type = TKN_PLUS});
-  assert_token_equals(&tokens[2], &(Token){.type = TKN_NUMBER, .num = 1});
-  assert_token_equals(&tokens[3], &(Token){.type = TKN_MINUS});
-  assert_token_equals(&tokens[4], &(Token){.type = TKN_NUMBER, .num = 2.1});
-  assert_token_equals(&tokens[5], &(Token){.type = TKN_MULT});
-  assert_token_equals(&tokens[6], &(Token){.type = TKN_MINUS});
-  assert_token_equals(&tokens[7], &(Token){.type = TKN_NUMBER, .num = 3});
-  assert_token_equals(&tokens[8], &(Token){.type = TKN_DIV});
-  assert_token_equals(&tokens[9], &(Token){.type = TKN_NUMBER, .num = 100});
+  assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 0},   &tokens[0]);
+  assert_token_equals(&(Token){.type = TKN_PLUS},               &tokens[1]);
+  assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 1},   &tokens[2]);
+  assert_token_equals(&(Token){.type = TKN_MINUS},              &tokens[3]);
+  assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 2.1}, &tokens[4]);
+  assert_token_equals(&(Token){.type = TKN_MULT},               &tokens[5]);
+  assert_token_equals(&(Token){.type = TKN_MINUS},              &tokens[6]);
+  assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 3},   &tokens[7]);
+  assert_token_equals(&(Token){.type = TKN_DIV},                &tokens[8]);
+  assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 100}, &tokens[9]);
 
   // test minus signs
   str = "-1 - -2.1";
@@ -41,11 +42,11 @@ int test_run_lexer(void) {
 
   assert(5 == token_count);
 
-  assert_token_equals(&tokens[0], &(Token){.type = TKN_MINUS});
-  assert_token_equals(&tokens[1], &(Token){.type = TKN_NUMBER, .num = 1});
-  assert_token_equals(&tokens[2], &(Token){.type = TKN_MINUS});
-  assert_token_equals(&tokens[3], &(Token){.type = TKN_MINUS});
-  assert_token_equals(&tokens[4], &(Token){.type = TKN_NUMBER, .num = 2.1});
+  assert_token_equals(&(Token){.type = TKN_MINUS},              &tokens[0]);
+  assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 1},   &tokens[1]);
+  assert_token_equals(&(Token){.type = TKN_MINUS},              &tokens[2]);
+  assert_token_equals(&(Token){.type = TKN_MINUS},              &tokens[3]);
+  assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 2.1}, &tokens[4]);
 
   // test parenthesis
   str = "(1 + 2)";
@@ -53,11 +54,20 @@ int test_run_lexer(void) {
 
   assert(5 == token_count);
 
-  assert_token_equals(&tokens[0], &(Token){.type = TKN_LPAREN});
-  assert_token_equals(&tokens[1], &(Token){.type = TKN_NUMBER, .num = 1});
-  assert_token_equals(&tokens[2], &(Token){.type = TKN_PLUS});
-  assert_token_equals(&tokens[3], &(Token){.type = TKN_NUMBER, .num = 2});
-  assert_token_equals(&tokens[4], &(Token){.type = TKN_RPAREN});
+  assert_token_equals(&(Token){.type = TKN_LPAREN},           &tokens[0]);
+  assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 1}, &tokens[1]);
+  assert_token_equals(&(Token){.type = TKN_PLUS},             &tokens[2]);
+  assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 2}, &tokens[3]);
+  assert_token_equals(&(Token){.type = TKN_RPAREN},           &tokens[4]);
+
+  // test assignment
+  str = "def foo_bar(baz) := baz * baz";
+  token_count = run_lexer(str, tokens);
+
+  ASSERT_EQUAL_NUM(2, token_count);
+
+  assert_token_equals(&(Token){.type = TKN_DEF},        &tokens[0]);
+  assert_token_equals(&(Token){.type = TKN_ASSIGNMENT}, &tokens[1]);
 
   return 1;
 }

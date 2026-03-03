@@ -37,4 +37,3 @@ int test_run_interpreter(void) {
 
   return 1;
 }
-
