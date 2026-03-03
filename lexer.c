@@ -42,11 +42,6 @@ bool is_num(char c) {
 int consume_num(const char *str, Token *tokens) {
   float num;
 
-  // TODO: This version requires minus operator to have space after
-  if (*str == '-' && *(str + 1) == ' ') {
-    return 0;
-  }
-
   char num_buf[MAX_NUM_DIGITS];
 
   num_buf[0] = *str++;
@@ -71,7 +66,7 @@ int run_lexer(const char *str, Token *tokens) {
   token_idx = 0;
 
   for (;*str != '\0'; str++) {
-    if (is_num(*str) || (*str == '-')) {
+    if (is_num(*str)) {
       str += consume_num(str, tokens);
     }
 

@@ -18,7 +18,7 @@ int test_run_lexer(void) {
   char *str = "0 + 1 - 2.1 * -3 / 100";
   int token_count = run_lexer(str, tokens);
 
-  assert(9 == token_count);
+  assert(10 == token_count);
 
   assert(token_equals(&tokens[0], &(Token){.type = TKN_NUMBER, .num = 0}));
   assert(token_equals(&tokens[1], &(Token){.type = TKN_PLUS}));
@@ -26,19 +26,22 @@ int test_run_lexer(void) {
   assert(token_equals(&tokens[3], &(Token){.type = TKN_MINUS}));
   assert(token_equals(&tokens[4], &(Token){.type = TKN_NUMBER, .num = 2.1}));
   assert(token_equals(&tokens[5], &(Token){.type = TKN_MULT}));
-  assert(token_equals(&tokens[6], &(Token){.type = TKN_NUMBER, .num = -3}));
-  assert(token_equals(&tokens[7], &(Token){.type = TKN_DIV}));
-  assert(token_equals(&tokens[8], &(Token){.type = TKN_NUMBER, .num = 100}));
+  assert(token_equals(&tokens[6], &(Token){.type = TKN_MINUS}));
+  assert(token_equals(&tokens[7], &(Token){.type = TKN_NUMBER, .num = 3}));
+  assert(token_equals(&tokens[8], &(Token){.type = TKN_DIV}));
+  assert(token_equals(&tokens[9], &(Token){.type = TKN_NUMBER, .num = 100}));
 
   // test minus signs
   str = "-1 - -2.1";
   token_count = run_lexer(str, tokens);
 
-  assert(3 == token_count);
+  assert(5 == token_count);
 
-  assert(token_equals(&tokens[0], &(Token){.type = TKN_NUMBER, .num = -1}));
-  assert(token_equals(&tokens[1], &(Token){.type = TKN_MINUS}));
-  assert(token_equals(&tokens[2], &(Token){.type = TKN_NUMBER, .num = -2.1}));
+  assert(token_equals(&tokens[0], &(Token){.type = TKN_MINUS}));
+  assert(token_equals(&tokens[1], &(Token){.type = TKN_NUMBER, .num = 1}));
+  assert(token_equals(&tokens[2], &(Token){.type = TKN_MINUS}));
+  assert(token_equals(&tokens[3], &(Token){.type = TKN_MINUS}));
+  assert(token_equals(&tokens[4], &(Token){.type = TKN_NUMBER, .num = 2.1}));
 
   // test parenthesis
   str = "(1 + 2)";
@@ -61,7 +64,7 @@ int test_run_lexer(void) {
 
 int test_run_parser(void) {
   Token tokens[MAX_TOKENS];
-  int result = run_lexer("1 + 2 / 4 - 8", tokens);
+  int result = run_lexer("1 + -2 / 4 - 8", tokens);
 
   AST *ast = run_parser(tokens, result);
 
@@ -84,7 +87,7 @@ int test_run_parser(void) {
   AST *l_r_r = l_r->astBO.right;
 
   assert(l_r_l->type == AST_TYPE_NUMBER);
-  assert(l_r_l->astNum.number == 2);
+  assert(l_r_l->astNum.number == -2);
 
   assert(l_r_r->type == AST_TYPE_NUMBER);
   assert(l_r_r->astNum.number == 4);
@@ -94,9 +97,29 @@ int test_run_parser(void) {
 
   deinitAst(ast);
 
-  result = run_lexer("(1 + 2) * 3", tokens);
+  result = run_lexer("(1 --2) *-3", tokens);
 
   ast = run_parser(tokens, result);
+
+  assert(ast->type == AST_TYPE_BINARY_OPERATOR);
+  assert(ast->astBO.operator == OP_MULT);
+  l = ast->astBO.left;
+  r = ast->astBO.right;
+
+  assert(l->type == AST_TYPE_BINARY_OPERATOR);
+  assert(l->astBO.operator == OP_MINUS);
+
+  l_l = l->astBO.left;
+  l_r = l->astBO.right;
+
+  assert(l_l->type == AST_TYPE_NUMBER);
+  assert(l_l->astNum.number == 1);
+
+  assert(l_r->type == AST_TYPE_NUMBER);
+  assert(l_r->astNum.number == -2);
+
+  assert(r->type == AST_TYPE_NUMBER);
+  assert(r->astNum.number == -3);
 
   return 1;
 }
@@ -130,6 +153,12 @@ int test_run_interpreter(void) {
   res = interpret(ast);
 
   assert(fabs(res - -1) < 0.1);
+
+  result = run_lexer("-1+-2*-3/-1", tokens);
+  ast = run_parser(tokens, result);
+  res = interpret(ast);
+
+  assert(res == -7);
 
   return 1;
 }

@@ -146,13 +146,20 @@ AST *parse_term0(Token *tokens) {
     return current;
   }
 
+  bool is_negative = false;
+
+  if (t.type == TKN_MINUS) {
+    is_negative = true;
+    t = tokens[position++];
+  }
+
   if (t.type == TKN_NUMBER) {
     AST *ast = malloc(sizeof(AST));
 
     *ast = (AST){
       .type = AST_TYPE_NUMBER,
       .astNum = {
-        .number = t.num,
+        .number = t.num * (is_negative ? -1 : 1),
       },
     };
     return ast;
