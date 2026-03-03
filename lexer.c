@@ -32,48 +32,47 @@ bool token_equals(Token *a, Token *b) {
 #define MAX_TOKENS 1000
 #define MAX_NUM_DIGITS 36
 
+uint16_t token_idx;
+
 bool is_num(char c) {
   return ('0' <= c && c <= '9') || c == '.';
 }
 
-int get_num(const char *str, float *out) {
-    // TODO: This version requires minus operator to have space after
-    if (*str == '-' && *(str + 1) == ' ') {
-      return 0;
-    }
-      
-    char num_buf[MAX_NUM_DIGITS];
+// return the length of consumed char
+int consume_num(const char *str, Token *tokens) {
+  float num;
 
-    num_buf[0] = *str++;
+  // TODO: This version requires minus operator to have space after
+  if (*str == '-' && *(str + 1) == ' ') {
+    return 0;
+  }
 
-    int num_i = 1;
+  char num_buf[MAX_NUM_DIGITS];
 
-    while (is_num(*str) || *str == '.') {
-      num_buf[num_i++] = *str;
-      str++;
-    }
+  num_buf[0] = *str++;
 
-    num_buf[num_i] = '\0';
+  uint8_t len = 1;
 
-    *out = strtof(num_buf, NULL);
+  while (is_num(*str) || *str == '.') {
+    num_buf[len++] = *str;
+    str++;
+  }
 
-    return num_i;
+  num_buf[len] = '\0';
+
+  num = strtof(num_buf, NULL);
+
+  tokens[token_idx++] = (Token){.type = TKN_NUMBER, .num = num};
+  return len - 1;
 }
 
 // returns the total token count
 int run_lexer(const char *str, Token *tokens) {
-  int token_idx = 0;
+  token_idx = 0;
 
   for (;*str != '\0'; str++) {
     if (is_num(*str) || (*str == '-')) {
-      float num;
-      int len = get_num(str, &num);
-
-      if (len > 0) {
-        tokens[token_idx++] = (Token){.type = TKN_NUMBER, .num = num};
-        str += len - 1;
-        continue;
-      }
+      str += consume_num(str, tokens);
     }
 
     switch (*str) {
