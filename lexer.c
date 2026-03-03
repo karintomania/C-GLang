@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdio.h>
 
 #pragma once
 
@@ -20,6 +22,32 @@ typedef struct {
   enum TokenType type;
   float num;
 } Token;
+
+void token_print(Token *t) {
+  switch (t->type) {
+  case TKN_PLUS:
+    printf("PLUS");
+    break;
+  case TKN_MINUS:
+    printf("MINUS");
+    break;
+  case TKN_MULT:
+    printf("MULT");
+    break;
+  case TKN_DIV:
+    printf("DIV");
+     break;
+  case TKN_LPAREN:
+    printf("LPAREN");
+    break;
+  case TKN_RPAREN:
+    printf("RPAREN");
+    break;
+  case TKN_NUMBER:
+    printf("NUMBER(%g)", t->num);
+    break;
+  }
+}
 
 bool token_equals(Token *a, Token *b) {
   if (a->type == TKN_NUMBER) {
