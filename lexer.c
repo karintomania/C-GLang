@@ -31,45 +31,30 @@ typedef struct {
   char *var;
 } Token;
 
-void token_print(Token *t) {
+void token_print(const Token *t) {
   switch (t->type) {
-  case TKN_PLUS:
-    printf("PLUS");
-    break;
-  case TKN_MINUS:
-    printf("MINUS");
-    break;
-  case TKN_MULT:
-    printf("MULT");
-    break;
-  case TKN_DIV:
-    printf("DIV");
-     break;
-  case TKN_LPAREN:
-    printf("LPAREN");
-    break;
-  case TKN_RPAREN:
-    printf("RPAREN");
-    break;
-  case TKN_NUMBER:
-    printf("NUMBER(%g)", t->num);
-    break;
-  case TKN_VAR:
-    printf("VAR(%s)", t->var);
-    break;
-  case TKN_ASSIGNMENT:
-    printf("ASSIGNMENT");
-    break;
-  case TKN_DEF:
-    printf("DEF");
-    break;
-  case TKN_SEMICOLON:
-    printf("SEMICOLON");
-    break;
+  case TKN_PLUS:       printf("PLUS");               break;
+  case TKN_MINUS:      printf("MINUS");              break;
+  case TKN_MULT:       printf("MULT");               break;
+  case TKN_DIV:        printf("DIV");                break;
+  case TKN_LPAREN:     printf("LPAREN");             break;
+  case TKN_RPAREN:     printf("RPAREN");             break;
+  case TKN_NUMBER:     printf("NUMBER(%g)", t->num); break;
+  case TKN_VAR:        printf("VAR(%s)", t->var);    break;
+  case TKN_ASSIGNMENT: printf("ASSIGNMENT");         break;
+  case TKN_DEF:        printf("DEF");                break;
+  case TKN_SEMICOLON:  printf("SEMICOLON");          break;
   }
 }
 
-bool token_equals(Token *a, Token *b) {
+void tokens_print(const Token *tokens, uint16_t token_count) {
+  for (uint16_t i = 0; i < token_count; i ++) {
+    token_print(&tokens[i]);
+    printf("\n");
+  }
+}
+
+bool token_equals(const Token *a, const Token *b) {
   if (a->type == TKN_NUMBER) {
     return b->type == TKN_NUMBER && fabs(a->num - b->num) < 0.00001;
   }
@@ -82,20 +67,21 @@ bool token_equals(Token *a, Token *b) {
   return a->type == b->type;
 }
 
-#define MAX_TOKENS 1000
+// max of uint16_t
+#define MAX_TOKENS 65535
 #define MAX_NUM_DIGITS 36
 #define MAX_VAR_CHAR 512
 
 uint16_t token_idx;
 
 bool is_num(char c) {
-
-  printf("inside a '%c'\n", c);
   return ('0' <= c && c <= '9') || c == '.';
 }
 
 // return the length of consumed char
 uint16_t consume_num(const char *str, Token *tokens) {
+  if (!is_num(*str)) return 0;
+
   float num;
 
   char num_buf[MAX_NUM_DIGITS];
@@ -112,8 +98,6 @@ uint16_t consume_num(const char *str, Token *tokens) {
   num_buf[len] = '\0';
 
   num = strtof(num_buf, NULL);
-
-  printf("num %g, len %d\n", num, len);
 
   tokens[token_idx++] = (Token){.type = TKN_NUMBER, .num = num};
   return len;
@@ -142,6 +126,8 @@ bool is_var_char(char c) {
 }
 
 uint16_t consume_var(const char *str, Token *tokens) {
+  if (!is_var_char(*str)) return 0;
+
   char *var;
 
   char var_buf[MAX_VAR_CHAR];
@@ -161,8 +147,6 @@ uint16_t consume_var(const char *str, Token *tokens) {
 
   memcpy(var, var_buf, len);
 
-  printf("var %s, len %d\n", var, len);
-
   tokens[token_idx++] = (Token){.type = TKN_VAR, .var = var};
 
   return len;
@@ -174,8 +158,7 @@ int run_lexer(const char *str, Token *tokens) {
 
   while (*str != '\0') {
     uint16_t len = 0;
-    printf("str: %s\n", str);
-    if (is_num(*str) && (len = consume_num(str, tokens))) {
+    if ((len = consume_num(str, tokens))) {
      str += len;
      continue;
     }
@@ -186,6 +169,11 @@ int run_lexer(const char *str, Token *tokens) {
     }
 
     if ((len = consume_def(str, tokens))) {
+      str += len;
+      continue;
+    }
+
+    if ((len = consume_var(str, tokens))) {
       str += len;
       continue;
     }

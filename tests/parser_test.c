@@ -1,6 +1,7 @@
 #ifndef UNITY_BUILD
   #include "../lexer.c"
   #include "../parser.c"
+  #include "test_util.c"
 #endif
 
 /*---------------------
@@ -9,62 +10,60 @@
 
 int test_run_parser(void) {
   Token tokens[MAX_TOKENS];
-  int result = run_lexer("1 + -2 / 4 - 8", tokens);
+  Expression *ast;
+  int result;
+  char *expected;
 
-  AST *ast = run_parser(tokens, result);
+  uint16_t written;
+  char buf[4000];
 
-  assert(ast->type == AST_TYPE_BINARY_OPERATOR);
-  assert(ast->astBO.operator == OP_MINUS);
-  AST *l = ast->astBO.left;
-  AST *r = ast->astBO.right;
+  result = run_lexer("1 + -2 / 4 - 8", tokens);
 
-  assert(l->type == AST_TYPE_BINARY_OPERATOR);
-  assert(l->astBO.operator == OP_PLUS);
-  AST *l_l = l->astBO.left;
-  AST *l_r = l->astBO.right;
+  ast = run_parser(tokens, result);
 
-  assert(l_l->type == AST_TYPE_NUMBER);
-  assert(l_l->astNum.number == 1);
+  written = sprint_ast(ast, buf);
 
-  assert(l_r->type == AST_TYPE_BINARY_OPERATOR);
-  assert(l_r->astBO.operator == OP_DIV);
-  AST *l_r_l = l_r->astBO.left;
-  AST *l_r_r = l_r->astBO.right;
+  expected = "\
+OP:-\n\
+  OP:+\n\
+    NUM:1\n\
+    OP:/\n\
+      NUM:-2\n\
+      NUM:4\n\
+  NUM:8\n";
 
-  assert(l_r_l->type == AST_TYPE_NUMBER);
-  assert(l_r_l->astNum.number == -2);
+  ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
 
-  assert(l_r_r->type == AST_TYPE_NUMBER);
-  assert(l_r_r->astNum.number == 4);
-
-  assert(r->type == AST_TYPE_NUMBER);
-  assert(r->astNum.number == 8);
-
-  deinitAst(ast);
+  deinit_ast(ast);
 
   result = run_lexer("(1 --2) *-3", tokens);
 
   ast = run_parser(tokens, result);
 
-  assert(ast->type == AST_TYPE_BINARY_OPERATOR);
-  assert(ast->astBO.operator == OP_MULT);
-  l = ast->astBO.left;
-  r = ast->astBO.right;
+  written = sprint_ast(ast, buf);
 
-  assert(l->type == AST_TYPE_BINARY_OPERATOR);
-  assert(l->astBO.operator == OP_MINUS);
+  expected = "\
+OP:*\n\
+  OP:-\n\
+    NUM:1\n\
+    NUM:-2\n\
+  NUM:-3\n";
 
-  l_l = l->astBO.left;
-  l_r = l->astBO.right;
+  ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
 
-  assert(l_l->type == AST_TYPE_NUMBER);
-  assert(l_l->astNum.number == 1);
+  deinit_ast(ast);
 
-  assert(l_r->type == AST_TYPE_NUMBER);
-  assert(l_r->astNum.number == -2);
+  result = run_lexer("f", tokens);
 
-  assert(r->type == AST_TYPE_NUMBER);
-  assert(r->astNum.number == -3);
+  ast = run_parser(tokens, result);
+
+  written = sprint_ast(ast, buf);
+
+  expected = "VAR:f\n";
+
+  ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+
+  deinit_ast(ast);
 
   return 1;
 }
