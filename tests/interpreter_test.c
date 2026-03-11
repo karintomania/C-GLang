@@ -5,35 +5,62 @@
 
 int test_run_interpreter(void) {
   Token tokens[MAX_TOKENS];
-  int result = run_lexer("1 + 2", tokens);
-  Expression *ast = run_parser(tokens, result);
-  float res = interpret(ast);
+  int result;
+  AST *ast;
+  Expression *expr;
 
-  ASSERT_EQUAL_NUM(3, res);
+  float res;
 
-  result = run_lexer("1 + 2 * 3", tokens);
-  ast = run_parser(tokens, result);
-  res = interpret(ast);
+  {
+    printf("\t%s: 1 / 2 - 3\n", "test_run_interpreter");
 
-  ASSERT_EQUAL_NUM(7, res);
+    result = run_lexer("1 / 2 - 3", tokens);
+    ast = run_parser(tokens, result);
+    expr = ast[0]->expr;
+    res = interpret(expr);
 
-  result = run_lexer("1 / 2 - 3", tokens);
-  ast = run_parser(tokens, result);
-  res = interpret(ast);
+    ASSERT_EQUAL_NUM(-2.5, res);
+  }
 
-  ASSERT_EQUAL_NUM(-2.5, res);
+  {
+    printf("\t%s: 1 + 2 * 3\n", "test_run_interpreter");
+    result = run_lexer("1 + 2 * 3", tokens);
+    ast = run_parser(tokens, result);
+    expr = ast[0]->expr;
+    res = interpret(expr);
 
-  result = run_lexer("1 / (2 - 3)", tokens);
-  ast = run_parser(tokens, result);
-  res = interpret(ast);
+    ASSERT_EQUAL_NUM(7, res);
+  }
 
-  ASSERT_EQUAL_NUM(-1, res);
+  {
+    printf("\t%s: 1 / 2 - 3\n", "test_run_interpreter");
+    result = run_lexer("1 / 2 - 3", tokens);
+    ast = run_parser(tokens, result);
+    expr = ast[0]->expr;
+    res = interpret(expr);
 
-  result = run_lexer("-1+-2*-3/-1", tokens);
-  ast = run_parser(tokens, result);
-  res = interpret(ast);
+    ASSERT_EQUAL_NUM(-2.5, res);
+  }
 
-  ASSERT_EQUAL_NUM(-7, res);
+  {
+    printf("\t%s: 1 / (2 - 3)\n", "test_run_interpreter");
+    result = run_lexer("1 / (2 - 3)", tokens);
+    ast = run_parser(tokens, result);
+    expr = ast[0]->expr;
+    res = interpret(expr);
+
+    ASSERT_EQUAL_NUM(-1, res);
+  }
+
+  {
+    printf("\t%s: -1+-2*-3/-1\n", "test_run_interpreter");
+    result = run_lexer("-1+-2*-3/-1", tokens);
+    ast = run_parser(tokens, result);
+    expr = ast[0]->expr;
+    res = interpret(expr);
+
+    ASSERT_EQUAL_NUM(-7, res);
+  }
 
   return 1;
 }

@@ -8,6 +8,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// max count of statements in AST
+#define MAX_AST_STMTS 100
+
+enum StatementType {
+  STMT_EXPR,
+  STMT_DEF,
+};
+
+const char* statement_type_name[] = {
+  "STMT_EXPR",
+  "STMT_DEF",
+};
+
 enum OperatorType {
   OP_PLUS,
   OP_MULT,
@@ -22,8 +35,24 @@ const char* operator_type_name[] =  {
   "OP_MINUS",
 };
 
+typedef struct Statement Statement;
 typedef struct Expression Expression;
-typedef struct AST AST;
+typedef struct Definition Definition;
+typedef Statement *AST;
+
+struct Statement {
+  enum StatementType type;
+  union {
+    Expression *expr;
+    Definition *def;
+  };
+};
+
+struct Definition {
+  char *name;
+  char *args; // TODO support multiple args later
+  Expression *body;
+};
 
 typedef struct {
   enum OperatorType operator;
@@ -41,9 +70,10 @@ typedef struct {
 
 typedef struct {
   char *name;
-  Expression *expression;
+  Expression *expr;
 } ExpCall;
 
+// TODO: Shorten names to EXPR_VAR
 enum ExpressionType {
   EXPRESSION_TYPE_BINARY_OPERATOR,
   EXPRESSION_TYPE_NUMBER,
@@ -51,6 +81,7 @@ enum ExpressionType {
   EXPRESSION_TYPE_CALL,
 };
 
+// TODO: drop prefix. i.e., expVar >> var
 struct Expression {
   enum ExpressionType type;
   union {
@@ -61,11 +92,26 @@ struct Expression {
   };
 };
 
-void print_ast_recursive(Expression *ast, int depth, char *out, uint16_t *written) {
-  switch (ast->type) {
+void print_stmt(Statement *stmt, int depth, char *out, uint16_t *written);
+void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *written);
+
+void print_stmt(Statement *stmt, int depth, char *out, uint16_t *written) {
+  if (stmt->type == STMT_DEF) {
+    Definition *def = stmt->def;
+    *written += sprintf(out + *written, "%*sDEF:%s, ARGS:%s\n", depth * 2, "", def->name, def->args);
+    *written += sprintf(out + *written, "%*sBODY:\n", ++depth * 2, "");
+      print_expr_recursive(def->body, depth+1, out, written);
+  } else {
+    Expression *expr = stmt->expr;
+    print_expr_recursive(expr, depth, out, written);
+  }
+}
+
+void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *written) {
+  switch (expr->type) {
     char *op_str;
     case EXPRESSION_TYPE_BINARY_OPERATOR:
-      switch (ast->expBO.operator) {
+      switch (expr->expBO.operator) {
         case OP_PLUS:
           op_str = "+";
           break;
@@ -81,36 +127,39 @@ void print_ast_recursive(Expression *ast, int depth, char *out, uint16_t *writte
       }
 
       *written += sprintf(out + *written, "%*sOP:%s\n", depth * 2, "", op_str);
-      print_ast_recursive(ast->expBO.left, depth+1, out, written);
-      print_ast_recursive(ast->expBO.right, depth+1, out, written);
+      print_expr_recursive(expr->expBO.left, depth+1, out, written);
+      print_expr_recursive(expr->expBO.right, depth+1, out, written);
 
       break;
     case EXPRESSION_TYPE_NUMBER:
-      *written += sprintf(out + *written, "%*sNUM:%g\n", depth * 2, "", ast->expNum.number);
+      *written += sprintf(out + *written, "%*sNUM:%g\n", depth * 2, "", expr->expNum.number);
       break;
     case EXPRESSION_TYPE_VAR:
-      *written += sprintf(out + *written, "%*sVAR:%s\n", depth * 2, "", ast->expVar.name);
+      *written += sprintf(out + *written, "%*sVAR:%s\n", depth * 2, "", expr->expVar.name);
       break;
     case EXPRESSION_TYPE_CALL:
       // TODO:update here. no op for now
-      *written += sprintf(out + *written, "%*sCALL:%s\n", depth * 2, "", ast->expCall.name);
-      print_ast_recursive(ast->expCall.expression, depth+1, out, written);
+      *written += sprintf(out + *written, "%*sCALL:%s\n", depth * 2, "", expr->expCall.name);
+      print_expr_recursive(expr->expCall.expr, depth+1, out, written);
       break;
   }
 }
 
-uint16_t sprint_ast(Expression *ast, char *out) {
+uint16_t sprint_ast(AST *ast, char *out) {
   uint16_t written = 0;
   if (ast == NULL) {
     written = sprintf(out, "ast is null.");
     return written;
   }
-  print_ast_recursive(ast, 0, out, &written);
+
+  Statement *stmt = ast[0];
+
+  print_stmt(stmt, 0, out, &written);
 
   return written;
 }
 
-void print_ast(Expression *ast) {
+void print_ast(AST *ast) {
   char buf[4000];
   sprint_ast(ast, buf);
 
@@ -125,13 +174,54 @@ int position;
 Expression *current;
 int parser_token_count;
 
+Statement *parse_statement(Token *tokens);
 Expression *parse_expression(Token *tokens);
 Expression *parse_term2(Token *tokens);
 Expression *parse_term1(Token *tokens);
 Expression *parse_term0(Token *tokens);
 
 Token expect_token(Token *tokens, enum TokenType type);
-void expect_var(char *name);
+char *expect_var(Token *token);
+
+Statement *parse_statement(Token *tokens) {
+  Token t = tokens[position];
+
+  if (t.type == TKN_DEF) {
+    Statement *stmt = malloc(sizeof(Statement));
+
+    position++;
+
+    Definition *def =malloc(sizeof(Definition));
+
+    char *name = expect_var(tokens);
+
+    expect_token(tokens, TKN_LPAREN);
+
+    char *arg = expect_var(tokens);
+
+    expect_token(tokens, TKN_RPAREN);
+    expect_token(tokens, TKN_ASSIGNMENT);
+
+    Expression *body= parse_expression(tokens);
+
+    *def = (Definition){.name = name, .args = arg, .body = body};
+
+    *stmt = (Statement){
+      .type = STMT_DEF,
+      .def = def,
+    };
+
+    return stmt;
+  } else {
+    Statement *stmt = malloc(sizeof(Statement));
+
+    Expression *expr = parse_expression(tokens);
+
+    *stmt = (Statement){.type = STMT_EXPR, .expr = expr};
+
+    return stmt;
+  }
+}
 
 Expression *parse_expression(Token *tokens) {
   return parse_term2(tokens);
@@ -212,7 +302,7 @@ Expression *parse_term0(Token *tokens) {
         .type = EXPRESSION_TYPE_CALL,
         .expCall = {
           .name = t.var,
-          .expression = parse_expression(tokens)
+          .expr = parse_expression(tokens)
         },
       };
 
@@ -268,20 +358,51 @@ Token expect_token(Token *tokens, enum TokenType type) {
     return t;
 }
 
-Expression *run_parser(Token *tokens, int token_count) {
+char *expect_var(Token *tokens) {
+    Token t = tokens[position++];
+
+    if (t.type != TKN_VAR) {
+       fprintf(stderr, "Expected variable, got %s\n", token_type_name[t.type]);
+       assert(t.type == TKN_VAR);
+    }
+
+    return t.var;
+}
+
+AST *run_parser(Token *tokens, int token_count) {
   parser_token_count = token_count;
   position = 0;
 
-  parse_term2(tokens);
+  Statement *stmt = parse_statement(tokens);
 
-  return current;
+  AST *ast = malloc(sizeof(AST) * MAX_AST_STMTS);
+  ast[0] = stmt;
+
+  return ast;
 }
 
+void deinit_statement(Statement *stmt);
+void deinit_expression(Expression *expr);
+void deinit_definition(Definition *def);
+
 // free all Expressions
-void deinit_ast(Expression *ast) {
-  if (ast->type == EXPRESSION_TYPE_BINARY_OPERATOR) {
-    deinit_ast(ast->expBO.right);
-    deinit_ast(ast->expBO.left);
+void deinit_ast(AST *ast) {
+  // TODO: multiple statements
+  Statement *stmt = ast[0];
+  deinit_statement(stmt);
+}
+
+void deinit_statement(Statement *stmt) {
+  if (stmt->type == STMT_EXPR) {
+    deinit_expression(stmt->expr);
   }
-  free(ast);
+  free(stmt);
+}
+
+void deinit_expression(Expression *expr){
+  if (expr->type == EXPRESSION_TYPE_BINARY_OPERATOR) {
+    deinit_expression(expr->expBO.right);
+    deinit_expression(expr->expBO.left);
+  }
+  free(expr);
 }
