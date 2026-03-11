@@ -119,7 +119,6 @@ DEF:f, ARGS:x\n\
     result = run_lexer("def f(x) := x + x; f(2)", tokens);
 
     ast = run_parser(tokens, result);
-    print_ast(ast);
 
     written = sprint_ast(ast, buf);
 

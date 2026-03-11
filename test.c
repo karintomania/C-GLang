@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
 
 #include "lexer.c"
 #include "parser.c"

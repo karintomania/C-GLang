@@ -357,6 +357,8 @@ Expression *parse_term0(Token *tokens) {
   // parse number
   bool is_negative = false;
 
+  // TODO: handle minus as unery operator
+  // currently, -x is invalid
   if (t.type == TKN_MINUS) {
     is_negative = true;
     t = tokens[position++];
