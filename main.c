@@ -2,6 +2,10 @@
 
 #include <stdio.h>
 
+
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
+
 #include "lexer.c"
 #include "parser.c"
 #include "interpreter.c"
@@ -21,7 +25,7 @@ int main (int argc, char *argv[]) {
   AST *ast = run_parser(tokens, token_count);
   float result = interpret(ast);
 
-  printf("%f\n", result);
+  printf("%g\n", result);
 
   return 0;
 }
