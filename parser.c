@@ -75,20 +75,19 @@ typedef struct {
 
 // TODO: Shorten names to EXPR_VAR
 enum ExpressionType {
-  EXPRESSION_TYPE_BINARY_OPERATOR,
-  EXPRESSION_TYPE_NUMBER,
-  EXPRESSION_TYPE_VAR,
-  EXPRESSION_TYPE_CALL,
+  EXPRESSION_BINARY_OPERATOR,
+  EXPRESSION_NUMBER,
+  EXPRESSION_VAR,
+  EXPRESSION_CALL,
 };
 
-// TODO: drop prefix. i.e., expVar >> var
 struct Expression {
   enum ExpressionType type;
   union {
-    ExpBinaryOperator expBO;
-    ExpNumber expNum;
-    ExpVar expVar;
-    ExpCall expCall;
+    ExpBinaryOperator bo;
+    ExpNumber num;
+    ExpVar var;
+    ExpCall call;
   };
 };
 
@@ -110,8 +109,8 @@ void print_stmt(Statement *stmt, int depth, char *out, uint16_t *written) {
 void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *written) {
   switch (expr->type) {
     char *op_str;
-    case EXPRESSION_TYPE_BINARY_OPERATOR:
-      switch (expr->expBO.operator) {
+    case EXPRESSION_BINARY_OPERATOR:
+      switch (expr->bo.operator) {
         case OP_PLUS:
           op_str = "+";
           break;
@@ -127,20 +126,20 @@ void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *writ
       }
 
       *written += sprintf(out + *written, "%*sOP:%s\n", depth * 2, "", op_str);
-      print_expr_recursive(expr->expBO.left, depth+1, out, written);
-      print_expr_recursive(expr->expBO.right, depth+1, out, written);
+      print_expr_recursive(expr->bo.left, depth+1, out, written);
+      print_expr_recursive(expr->bo.right, depth+1, out, written);
 
       break;
-    case EXPRESSION_TYPE_NUMBER:
-      *written += sprintf(out + *written, "%*sNUM:%g\n", depth * 2, "", expr->expNum.number);
+    case EXPRESSION_NUMBER:
+      *written += sprintf(out + *written, "%*sNUM:%g\n", depth * 2, "", expr->num.number);
       break;
-    case EXPRESSION_TYPE_VAR:
-      *written += sprintf(out + *written, "%*sVAR:%s\n", depth * 2, "", expr->expVar.name);
+    case EXPRESSION_VAR:
+      *written += sprintf(out + *written, "%*sVAR:%s\n", depth * 2, "", expr->var.name);
       break;
-    case EXPRESSION_TYPE_CALL:
+    case EXPRESSION_CALL:
       // TODO:update here. no op for now
-      *written += sprintf(out + *written, "%*sCALL:%s\n", depth * 2, "", expr->expCall.name);
-      print_expr_recursive(expr->expCall.expr, depth+1, out, written);
+      *written += sprintf(out + *written, "%*sCALL:%s\n", depth * 2, "", expr->call.name);
+      print_expr_recursive(expr->call.expr, depth+1, out, written);
       break;
   }
 }
@@ -231,23 +230,23 @@ Expression *parse_term2(Token *tokens) {
   current = parse_term1(tokens);
 
   while (position < parser_token_count) {
-    Expression *ast = malloc(sizeof(Expression));
+    Expression *expr = malloc(sizeof(Expression));
 
     Token t = tokens[position];
 
     if (t.type != TKN_PLUS && t.type != TKN_MINUS) break;
 
     position++;
-    *ast = (Expression){
-      .type = EXPRESSION_TYPE_BINARY_OPERATOR,
-      .expBO = {
+    *expr = (Expression){
+      .type = EXPRESSION_BINARY_OPERATOR,
+      .bo = {
         .operator = (t.type == TKN_PLUS) ? OP_PLUS : OP_MINUS,
         .left = current,
         .right = parse_term1(tokens),
       },
     };
 
-    current = ast;
+    current = expr;
   }
 
   return current;
@@ -257,23 +256,23 @@ Expression *parse_term1(Token *tokens) {
   current = parse_term0(tokens);
 
   while (position < parser_token_count) {
-      Expression *ast = malloc(sizeof(Expression));
+      Expression *expr = malloc(sizeof(Expression));
 
       Token t = tokens[position];
 
     if (t.type != TKN_MULT && t.type != TKN_DIV) break;
 
     position++;
-    *ast = (Expression){
-      .type = EXPRESSION_TYPE_BINARY_OPERATOR,
-      .expBO = {
+    *expr = (Expression){
+      .type = EXPRESSION_BINARY_OPERATOR,
+      .bo = {
         .operator = (t.type == TKN_MULT) ? OP_MULT : OP_DIV,
         .left = current,
         .right = parse_term0(tokens),
       },
     };
 
-      current = ast;
+      current = expr;
     }
 
   return current;
@@ -297,10 +296,10 @@ Expression *parse_term0(Token *tokens) {
     if (t_next.type == TKN_LPAREN) {
       position++;
       // Parse function call
-      Expression *ast = malloc(sizeof(Expression));
-      *ast = (Expression){
-        .type = EXPRESSION_TYPE_CALL,
-        .expCall = {
+      Expression *expr = malloc(sizeof(Expression));
+      *expr = (Expression){
+        .type = EXPRESSION_CALL,
+        .call = {
           .name = t.var,
           .expr = parse_expression(tokens)
         },
@@ -308,19 +307,19 @@ Expression *parse_term0(Token *tokens) {
 
       expect_token(tokens, TKN_RPAREN);
 
-      return ast;
+      return expr;
     } else {
       // Parse variable
-      Expression *ast = malloc(sizeof(Expression));
+      Expression *expr = malloc(sizeof(Expression));
 
-      *ast = (Expression){
-        .type = EXPRESSION_TYPE_VAR,
-        .expVar = {
+      *expr = (Expression){
+        .type = EXPRESSION_VAR,
+        .var = {
           .name = t.var,
         },
       };
 
-      return ast;
+      return expr;
     }
   }
 
@@ -333,15 +332,15 @@ Expression *parse_term0(Token *tokens) {
   }
 
   if (t.type == TKN_NUMBER) {
-    Expression *ast = malloc(sizeof(Expression));
+    Expression *expr = malloc(sizeof(Expression));
 
-    *ast = (Expression){
-      .type = EXPRESSION_TYPE_NUMBER,
-      .expNum = {
+    *expr = (Expression){
+      .type = EXPRESSION_NUMBER,
+      .num = {
         .number = t.num * (is_negative ? -1 : 1),
       },
     };
-    return ast;
+    return expr;
   }
 
   return NULL; // shouldn't reach here.
@@ -396,13 +395,27 @@ void deinit_statement(Statement *stmt) {
   if (stmt->type == STMT_EXPR) {
     deinit_expression(stmt->expr);
   }
+
+  if (stmt->type == STMT_DEF) {
+    deinit_expression(stmt->def->body);
+    free(stmt->def->name);
+    free(stmt->def->args);
+    free(stmt->def);
+  }
   free(stmt);
 }
 
 void deinit_expression(Expression *expr){
-  if (expr->type == EXPRESSION_TYPE_BINARY_OPERATOR) {
-    deinit_expression(expr->expBO.right);
-    deinit_expression(expr->expBO.left);
+  if (expr->type == EXPRESSION_CALL) {
+    deinit_expression(expr->call.expr);
+    free(expr->call.name);
+  }
+  if (expr->type == EXPRESSION_VAR) {
+    free(expr->var.name);
+  }
+  if (expr->type == EXPRESSION_BINARY_OPERATOR) {
+    deinit_expression(expr->bo.right);
+    deinit_expression(expr->bo.left);
   }
   free(expr);
 }

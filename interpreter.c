@@ -5,20 +5,20 @@
 #pragma once
 
 float interpret(Expression *ast) {
-  if (ast->type == EXPRESSION_TYPE_NUMBER) {
-    return ast->expNum.number;
+  if (ast->type == EXPRESSION_NUMBER) {
+    return ast->num.number;
   }
 
-  if (ast->type == EXPRESSION_TYPE_BINARY_OPERATOR) {
-    switch (ast->expBO.operator) {
+  if (ast->type == EXPRESSION_BINARY_OPERATOR) {
+    switch (ast->bo.operator) {
       case OP_PLUS:
-        return interpret(ast->expBO.left) + interpret(ast->expBO.right);
+        return interpret(ast->bo.left) + interpret(ast->bo.right);
       case OP_MINUS:
-        return interpret(ast->expBO.left) - interpret(ast->expBO.right);
+        return interpret(ast->bo.left) - interpret(ast->bo.right);
       case OP_MULT:
-        return interpret(ast->expBO.left) * interpret(ast->expBO.right);
+        return interpret(ast->bo.left) * interpret(ast->bo.right);
       case OP_DIV:
-        return interpret(ast->expBO.left) / interpret(ast->expBO.right);
+        return interpret(ast->bo.left) / interpret(ast->bo.right);
     }
   }
 
