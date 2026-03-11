@@ -111,5 +111,32 @@ DEF:f, ARGS:x\n\
     deinit_ast(ast);
   }
 
+ {
+    printf("\t%s: parse function def and call\n", "test_run_parser");
+
+    Token tokens[MAX_TOKENS];
+
+    result = run_lexer("def f(x) := x + x; f(2)", tokens);
+
+    ast = run_parser(tokens, result);
+    print_ast(ast);
+
+    written = sprint_ast(ast, buf);
+
+    expected = "\
+DEF:f, ARGS:x\n\
+  BODY:\n\
+    OP:+\n\
+      VAR:x\n\
+      VAR:x\n\
+CALL:f\n\
+  NUM:2\n\
+";
+
+    ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+
+    deinit_ast(ast);
+  }
+
   return 1;
 }

@@ -38,7 +38,7 @@ const char* operator_type_name[] =  {
 typedef struct Statement Statement;
 typedef struct Expression Expression;
 typedef struct Definition Definition;
-typedef Statement *AST;
+typedef struct AST AST;
 
 struct Statement {
   enum StatementType type;
@@ -47,6 +47,12 @@ struct Statement {
     Definition *def;
   };
 };
+
+struct AST {
+  Statement *stmts[MAX_AST_STMTS];
+  size_t count;
+};
+
 
 struct Definition {
   char *name;
@@ -151,9 +157,11 @@ uint16_t sprint_ast(AST *ast, char *out) {
     return written;
   }
 
-  Statement *stmt = ast[0];
+  for (size_t i = 0; i < ast->count; i++) {
+    Statement *stmt = ast->stmts[i];
+    print_stmt(stmt, 0, out, &written);
+  }
 
-  print_stmt(stmt, 0, out, &written);
 
   return written;
 }
@@ -173,6 +181,7 @@ int position;
 Expression *current;
 int parser_token_count;
 
+AST *run_parser(Token *tokens, int token_count);
 Statement *parse_statement(Token *tokens);
 Expression *parse_expression(Token *tokens);
 Expression *parse_term2(Token *tokens);
@@ -181,6 +190,28 @@ Expression *parse_term0(Token *tokens);
 
 Token expect_token(Token *tokens, enum TokenType type);
 char *expect_var(Token *token);
+
+AST *run_parser(Token *tokens, int token_count) {
+  parser_token_count = token_count;
+  position = 0;
+  size_t stmt_idx = 0;
+  AST *ast = malloc(sizeof(AST) * MAX_AST_STMTS);
+
+  while (position < token_count) {
+    Statement *stmt = parse_statement(tokens);
+
+    ast->stmts[stmt_idx++] = stmt;
+
+    if (position < token_count) {
+      expect_token(tokens, TKN_SEMICOLON);
+    }
+  }
+
+  ast->count = stmt_idx;
+
+  return ast;
+}
+
 
 Statement *parse_statement(Token *tokens) {
   Token t = tokens[position];
@@ -368,18 +399,6 @@ char *expect_var(Token *tokens) {
     return t.var;
 }
 
-AST *run_parser(Token *tokens, int token_count) {
-  parser_token_count = token_count;
-  position = 0;
-
-  Statement *stmt = parse_statement(tokens);
-
-  AST *ast = malloc(sizeof(AST) * MAX_AST_STMTS);
-  ast[0] = stmt;
-
-  return ast;
-}
-
 void deinit_statement(Statement *stmt);
 void deinit_expression(Expression *expr);
 void deinit_definition(Definition *def);
@@ -387,8 +406,9 @@ void deinit_definition(Definition *def);
 // free all Expressions
 void deinit_ast(AST *ast) {
   // TODO: multiple statements
-  Statement *stmt = ast[0];
+  Statement *stmt = ast->stmts[0];
   deinit_statement(stmt);
+  free(ast);
 }
 
 void deinit_statement(Statement *stmt) {
