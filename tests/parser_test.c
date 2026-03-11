@@ -9,7 +9,6 @@
 ------------------------*/
 
 int test_run_parser(void) {
-  Token tokens[MAX_TOKENS];
   Expression *ast;
   int result;
   char *expected;
@@ -17,13 +16,18 @@ int test_run_parser(void) {
   uint16_t written;
   char buf[4000];
 
-  result = run_lexer("1 + -2 / 4 - 8", tokens);
+  {
+    printf("%s: parse math expression\n", "test_run_parser");
 
-  ast = run_parser(tokens, result);
+    Token tokens[MAX_TOKENS];
 
-  written = sprint_ast(ast, buf);
+    result = run_lexer("1 + -2 / 4 - 8", tokens);
 
-  expected = "\
+    ast = run_parser(tokens, result);
+
+    written = sprint_ast(ast, buf);
+
+    expected = "\
 OP:-\n\
   OP:+\n\
     NUM:1\n\
@@ -32,38 +36,57 @@ OP:-\n\
       NUM:4\n\
   NUM:8\n";
 
-  ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+    ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
 
-  deinit_ast(ast);
+    deinit_ast(ast);
+  }
 
-  result = run_lexer("(1 --2) *-3", tokens);
+  {
+    printf("%s: parse minus\n", "test_run_parser");
 
-  ast = run_parser(tokens, result);
+    Token tokens[MAX_TOKENS];
 
-  written = sprint_ast(ast, buf);
+    result = run_lexer("(1 --2) *-3", tokens);
 
-  expected = "\
+    ast = run_parser(tokens, result);
+
+    written = sprint_ast(ast, buf);
+
+    expected = "\
 OP:*\n\
   OP:-\n\
     NUM:1\n\
     NUM:-2\n\
   NUM:-3\n";
 
-  ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+    ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
 
-  deinit_ast(ast);
+    deinit_ast(ast);
+  }
 
-  result = run_lexer("f", tokens);
+  {
+    printf("%s: parse function call\n", "test_run_parser");
 
-  ast = run_parser(tokens, result);
 
-  written = sprint_ast(ast, buf);
+    Token tokens[MAX_TOKENS];
 
-  expected = "VAR:f\n";
+    result = run_lexer("f(x+y)", tokens);
 
-  ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+    ast = run_parser(tokens, result);
 
-  deinit_ast(ast);
+    written = sprint_ast(ast, buf);
+
+    expected = "\
+CALL:f\n\
+  OP:+\n\
+    VAR:x\n\
+    VAR:y\n\
+";
+
+    ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+
+    deinit_ast(ast);
+  }
 
   return 1;
 }

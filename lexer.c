@@ -25,11 +25,26 @@ enum TokenType {
   TKN_SEMICOLON,
 };
 
+const char *token_type_name[] = {
+  "TKN_PLUS",
+  "TKN_MULT",
+  "TKN_DIV",
+  "TKN_MINUS",
+  "TKN_NUMBER",
+  "TKN_LPAREN",
+  "TKN_RPAREN",
+  "TKN_VAR",
+  "TKN_ASSIGNMENT",
+  "TKN_DEF",
+  "TKN_SEMICOLON",
+};
+
 typedef struct {
   enum TokenType type;
   float num;
   char *var;
 } Token;
+
 
 void token_print(const Token *t) {
   switch (t->type) {
@@ -53,6 +68,7 @@ void tokens_print(const Token *tokens, uint16_t token_count) {
     printf("\n");
   }
 }
+
 
 bool token_equals(const Token *a, const Token *b) {
   if (a->type == TKN_NUMBER) {
