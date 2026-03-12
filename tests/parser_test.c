@@ -32,7 +32,8 @@ OP:-\n\
   OP:+\n\
     NUM:1\n\
     OP:/\n\
-      NUM:-2\n\
+      OP:-u\n\
+        NUM:2\n\
       NUM:4\n\
   NUM:8\n";
 
@@ -56,8 +57,10 @@ OP:-\n\
 OP:*\n\
   OP:-\n\
     NUM:1\n\
-    NUM:-2\n\
-  NUM:-3\n";
+    OP:-u\n\
+      NUM:2\n\
+  OP:-u\n\
+    NUM:3\n";
 
     ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
 

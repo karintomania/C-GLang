@@ -37,6 +37,12 @@ float interpret(AST *ast) {
 }
 
 float interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) {
+  if (expr->type == EXPRESSION_UNARY_OPERATOR) {
+    float operand = interpretExpression(expr->uo.operand, dm, assignment);
+
+    return operand * -1;
+  }
+
   if (expr->type == EXPRESSION_CALL) {
     float value = interpretExpression(expr->call.expr, dm, assignment);
 

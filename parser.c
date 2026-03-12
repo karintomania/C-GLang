@@ -28,6 +28,10 @@ enum OperatorType {
   OP_MINUS,
 };
 
+enum UnaryOperatorType {
+  OP_U_MINUS,
+};
+
 const char* operator_type_name[] =  {
   "OP_PLUS",
   "OP_MULT",
@@ -67,6 +71,11 @@ typedef struct {
 } ExpBinaryOperator;
 
 typedef struct {
+  enum UnaryOperatorType operator;
+  Expression *operand;
+} ExpUnaryOperator;
+
+typedef struct {
   float number;
 } ExpNumber;
 
@@ -79,9 +88,9 @@ typedef struct {
   Expression *expr;
 } ExpCall;
 
-// TODO: Shorten names to EXPR_VAR
 enum ExpressionType {
   EXPRESSION_BINARY_OPERATOR,
+  EXPRESSION_UNARY_OPERATOR,
   EXPRESSION_NUMBER,
   EXPRESSION_VAR,
   EXPRESSION_CALL,
@@ -91,6 +100,7 @@ struct Expression {
   enum ExpressionType type;
   union {
     ExpBinaryOperator bo;
+    ExpUnaryOperator uo;
     ExpNumber num;
     ExpVar var;
     ExpCall call;
@@ -134,6 +144,14 @@ void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *writ
       *written += sprintf(out + *written, "%*sOP:%s\n", depth * 2, "", op_str);
       print_expr_recursive(expr->bo.left, depth+1, out, written);
       print_expr_recursive(expr->bo.right, depth+1, out, written);
+
+      break;
+
+    case EXPRESSION_UNARY_OPERATOR:
+      assert(expr->uo.operator == OP_U_MINUS);
+
+      *written += sprintf(out + *written, "%*sOP:-u\n", depth * 2, "");
+      print_expr_recursive(expr->uo.operand, depth+1, out, written);
 
       break;
     case EXPRESSION_NUMBER:
@@ -321,6 +339,19 @@ Expression *parse_term0(Token *tokens) {
     return current;
   }
 
+  if (t.type == TKN_MINUS) {
+    Expression *expr = malloc(sizeof(Expression));
+    *expr = (Expression){
+      .type = EXPRESSION_UNARY_OPERATOR,
+      .uo = (ExpUnaryOperator){
+          .operator = OP_U_MINUS,
+          .operand = parse_term0(tokens),
+        }
+      };
+
+      return expr;
+  }
+
   if (t.type == TKN_VAR) {
     Token t_next  = tokens[position];
 
@@ -354,15 +385,6 @@ Expression *parse_term0(Token *tokens) {
     }
   }
 
-  // parse number
-  bool is_negative = false;
-
-  // TODO: handle minus as unery operator
-  // currently, -x is invalid
-  if (t.type == TKN_MINUS) {
-    is_negative = true;
-    t = tokens[position++];
-  }
 
   if (t.type == TKN_NUMBER) {
     Expression *expr = malloc(sizeof(Expression));
@@ -370,9 +392,10 @@ Expression *parse_term0(Token *tokens) {
     *expr = (Expression){
       .type = EXPRESSION_NUMBER,
       .num = {
-        .number = t.num * (is_negative ? -1 : 1),
+        .number = t.num,
       },
     };
+
     return expr;
   }
 
