@@ -9,7 +9,7 @@ int test_run_interpreter(void) {
   int result;
   AST *ast;
 
-  float res;
+  Value res;
 
   {
     printf("\t%s: 1 / 2 - 3\n", "test_run_interpreter");
@@ -18,7 +18,7 @@ int test_run_interpreter(void) {
     ast = run_parser(tokens, result);
     res = interpret(ast);
 
-    ASSERT_EQUAL_NUM(-2.5, res);
+    ASSERT_EQUAL_NUM(-2.5, res.num);
   }
 
   {
@@ -27,7 +27,7 @@ int test_run_interpreter(void) {
     ast = run_parser(tokens, result);
     res = interpret(ast);
 
-    ASSERT_EQUAL_NUM(7, res);
+    ASSERT_EQUAL_NUM(7, res.num);
   }
 
   {
@@ -36,7 +36,7 @@ int test_run_interpreter(void) {
     ast = run_parser(tokens, result);
     res = interpret(ast);
 
-    ASSERT_EQUAL_NUM(-2.5, res);
+    ASSERT_EQUAL_NUM(-2.5, res.num);
   }
 
   {
@@ -45,7 +45,7 @@ int test_run_interpreter(void) {
     ast = run_parser(tokens, result);
     res = interpret(ast);
 
-    ASSERT_EQUAL_NUM(-1, res);
+    ASSERT_EQUAL_NUM(-1, res.num);
   }
 
   {
@@ -55,7 +55,7 @@ int test_run_interpreter(void) {
     ast = run_parser(tokens, result);
    res = interpret(ast);
 
-    ASSERT_EQUAL_NUM(-7, res);
+    ASSERT_EQUAL_NUM(-7, res.num);
   }
 
   {
@@ -65,7 +65,7 @@ int test_run_interpreter(void) {
     ast = run_parser(tokens, result);
     res = interpret(ast);
 
-    ASSERT_EQUAL_NUM(3, res);
+    ASSERT_EQUAL_NUM(3, res.num);
   }
 
   {
@@ -75,7 +75,7 @@ int test_run_interpreter(void) {
     ast = run_parser(tokens, result);
     res = interpret(ast);
 
-    ASSERT_EQUAL_NUM(-1, res);
+    ASSERT_EQUAL_NUM(-1, res.num);
   }
 
   {
@@ -85,7 +85,18 @@ int test_run_interpreter(void) {
     ast = run_parser(tokens, result);
     res = interpret(ast);
 
-    ASSERT_EQUAL_NUM(9, res);
+    ASSERT_EQUAL_NUM(9, res.num);
+  }
+
+  {
+    printf("\t%s: return func\n", "test_run_interpreter");
+
+    result = run_lexer("def f(x) := x*3; f;", tokens);
+    ast = run_parser(tokens, result);
+    res = interpret(ast);
+
+    assert(VAL_FUNC == res.type);
+    ASSERT_EQUAL_NUM(0, strcmp("f", res.func.name));
   }
 
   return 1;

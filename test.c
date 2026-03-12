@@ -36,7 +36,7 @@ int main(void) {
     FUNC_DEF(test_run_lexer),
     FUNC_DEF(test_run_parser),
     FUNC_DEF(test_run_interpreter),
-    {NULL, ""},
+    {NULL, ""}, // null termination
   };
 
   for (int i=0; i < MAX_TESTS; i++) {

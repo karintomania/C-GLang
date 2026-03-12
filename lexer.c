@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#pragma once
-
 enum TokenType {
   TKN_PLUS,
   TKN_MULT,

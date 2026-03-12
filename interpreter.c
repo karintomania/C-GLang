@@ -3,8 +3,27 @@
   #include "stb_ds.h"
 #endif
 
-#pragma once
+typedef struct Number Number;
+typedef struct Function Function;
 
+enum ValueType {
+  VAL_NUM,
+  VAL_FUNC
+};
+
+struct Function {
+  char *name;
+  char *args;
+  Expression *body;
+};
+
+typedef struct {
+  enum ValueType type;
+  union {
+    float num;
+    Function func;
+  };
+} Value;
 
 typedef struct {
   char *key;
@@ -16,10 +35,11 @@ typedef struct {
   float value;
 } Assignment;
 
-float interpret(AST *ast);
-float interpretExpression(Expression *ast, DefMap *dm, Assignment *assignment);
+Value interpret(AST *ast);
+Value interpretExpression(Expression *ast, DefMap *dm, Assignment *assignment);
+float expectNumber(Value v);
 
-float interpret(AST *ast) {
+Value interpret(AST *ast) {
   DefMap *dm = NULL;
 
   for (size_t i = 0; i < ast->count; i++) {
@@ -33,18 +53,18 @@ float interpret(AST *ast) {
     }
   }
 
-  return 0;
+  return (Value){.type = VAL_NUM, .num =  0};
 }
 
-float interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) {
+Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) {
   if (expr->type == EXPRESSION_UNARY_OPERATOR) {
-    float operand = interpretExpression(expr->uo.operand, dm, assignment);
+    float operand = expectNumber(interpretExpression(expr->uo.operand, dm, assignment));
 
-    return operand * -1;
+    return (Value){.type = VAL_NUM, .num =  operand * -1};
   }
 
   if (expr->type == EXPRESSION_CALL) {
-    float value = interpretExpression(expr->call.expr, dm, assignment);
+    float value = expectNumber(interpretExpression(expr->call.expr, dm, assignment));
 
     Definition *d = shget(dm, expr->call.name);
     shput(assignment, d->args, value);
@@ -54,30 +74,55 @@ float interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) 
   }
 
   if (expr->type == EXPRESSION_VAR) {
-    return shget(assignment, expr->var.name);
+    if (shgeti(assignment, expr->var.name) != -1) {
+      return (Value){.type = VAL_NUM, .num = shget(assignment, expr->var.name)};
+    } else if (shgeti(dm, expr->var.name) != -1) {
+      Definition *def  = shget(dm, expr->var.name);
+
+      return (Value){
+        .type = VAL_FUNC,
+        .func = (Function){
+          .args = def->args,
+          .name = expr->var.name,
+          .body = def->body,
+        },
+      };
+    }
   }
 
   if (expr->type == EXPRESSION_NUMBER) {
-    return expr->num.number;
+    return (Value){.type = VAL_NUM, .num = expr->num.number};
   }
 
   if (expr->type == EXPRESSION_BINARY_OPERATOR) {
+    float value;
     switch (expr->bo.operator) {
       case OP_PLUS:
-        return interpretExpression(expr->bo.left, dm, assignment)
-               + interpretExpression(expr->bo.right, dm, assignment);
+        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment))
+               + expectNumber(interpretExpression(expr->bo.right, dm, assignment));
+        break;
       case OP_MINUS:
-        return interpretExpression(expr->bo.left, dm, assignment)
-               - interpretExpression(expr->bo.right, dm, assignment);
+        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment))
+               - expectNumber(interpretExpression(expr->bo.right, dm, assignment));
+        break;
       case OP_MULT:
-        return interpretExpression(expr->bo.left, dm, assignment)
-               * interpretExpression(expr->bo.right, dm, assignment);
+        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment))
+               * expectNumber(interpretExpression(expr->bo.right, dm, assignment));
+        break;
       case OP_DIV:
-        return interpretExpression(expr->bo.left, dm, assignment)
-               / interpretExpression(expr->bo.right, dm, assignment);
+        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment))
+               / expectNumber(interpretExpression(expr->bo.right, dm, assignment));
+        break;
     }
+    return (Value){.type = VAL_NUM, .num =  value};
   }
 
   printf("unknown ast.");
   exit(1);
+}
+
+float expectNumber(Value v) {
+  assert(v.type == VAL_NUM);
+
+  return v.num;
 }

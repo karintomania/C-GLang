@@ -10,6 +10,7 @@
 #include "parser.c"
 #include "interpreter.c"
 
+void print_graph(Function f);
 
 int main (int argc, char *argv[]) {
   if (argc != 3) {
@@ -23,9 +24,37 @@ int main (int argc, char *argv[]) {
 
   int token_count = run_lexer(program, tokens);
   AST *ast = run_parser(tokens, token_count);
-  float result = interpret(ast);
+  Value result = interpret(ast);
 
-  printf("%g\n", result);
+  if (result.type == VAL_NUM) {
+    printf("%g\n", result.num);
+  } else if (result.type == VAL_FUNC) {
+    printf("%s\n", result.func.name);
+    print_graph(result.func);
+  }
 
   return 0;
+}
+
+
+void print_graph(Function f) {
+  FILE *gnuplot = popen("gnuplot -persist", "w");
+
+  if (gnuplot == NULL) {
+    fprintf(stderr, "failed to open gnuplot.\n");
+    exit(1);
+  }
+
+  fprintf(gnuplot, "plot '-' with linespoints title 'function<%s>'\n", f.name);
+
+  for (int16_t i = -10; i <= 10; i++) {
+    Assignment *assignment = NULL;
+    shput(assignment, f.args, (float)i);
+    float num = expectNumber(interpretExpression(f.body, NULL, assignment));
+    fprintf(gnuplot, "%d %g\n", i, num);
+  }
+
+  fprintf(gnuplot, "e\n");
+
+  pclose(gnuplot);
 }
