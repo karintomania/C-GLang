@@ -11,6 +11,7 @@
 #include "interpreter.c"
 
 void print_graph(Function f);
+int read_file(FILE *in, char *buf);
 
 int main (int argc, char *argv[]) {
   if (argc != 3) {
@@ -18,7 +19,28 @@ int main (int argc, char *argv[]) {
     return 2;
   }
 
-  char *program = argv[2];
+  char *program;
+
+  if (strncmp(argv[1], "-e", 2) == 0) {
+    program = argv[2];
+  } else if (strncmp(argv[1], "-f", 2) == 0) {
+    FILE *f = fopen(argv[2], "r");
+
+    if (f == NULL) {
+      fprintf(stderr, "Couldn't open file: %s", argv[2]);
+      exit(1);
+    }
+
+    char buf[2048];
+
+    read_file(f, buf);
+
+    program = buf;
+
+    fclose(f);
+  } else {
+    fprintf(stderr, "wrong flag: %s", argv[2]);
+  }
 
   Token tokens[MAX_TOKENS];
 
@@ -56,6 +78,24 @@ int main (int argc, char *argv[]) {
   return 0;
 }
 
+int read_file(FILE *in, char *buf) {
+  buf[0] = '\0';
+
+  char line [1024];
+  uint16_t len = 0;
+
+  while (fgets(line, 1024, in)) {
+    len = strlen(line);
+    strncat(buf, line, len);
+  }
+
+  if (feof(in) == 0) {
+    fprintf(stderr, "Error happend during reading file");
+    exit(1);
+  }
+
+  return 1;
+}
 
 void print_graph(Function f) {
   FILE *gnuplot = popen("gnuplot -persist", "w");
