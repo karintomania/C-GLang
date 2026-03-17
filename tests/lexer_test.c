@@ -132,6 +132,7 @@ void test_lexer_errors(void) {
 
     ASSERT_EQUAL_NUM(LEXER_ERROR, token_count);
     ASSERT_EQUAL_NUM(0, strcmp(err.message, "Unexpected Char ="));
+    ASSERT_EQUAL_NUM(9, err.position);
     ASSERT_EQUAL_NUM(LEXER_ERR_UNEXPECTED_CHAR, err.type);
   }
 }

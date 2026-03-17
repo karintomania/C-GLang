@@ -29,6 +29,9 @@ int main (int argc, char *argv[]) {
   int token_count = run_lexer(program, tokens, &lexer_err);
 
   if (token_count == LEXER_ERROR) {
+    // TODO: this works only when the program is one-liner
+    fprintf(stderr, "%s\n", program);
+    fprintf(stderr, "%*s^\n", lexer_err.position, "");
     fprintf(stderr, "Lexer Error: %s\n", lexer_err.message);
     return 1;
   }

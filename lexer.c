@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <ctype.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -46,6 +47,7 @@ enum LexerErrorType {
 typedef struct {
   enum LexerErrorType type;
   char *message;
+  uint16_t position;
 } LexerError;
 
 LexerError lexer_error_init(char *buf) {
@@ -56,6 +58,7 @@ typedef struct {
   enum TokenType type;
   float num;
   char *var;
+  uint16_t position;
 } Token;
 
 
@@ -81,6 +84,7 @@ void token_print(const Token *t) {
 #define MAX_VAR_CHAR 512
 
 uint16_t token_idx;
+uint16_t lexer_position;
 
 bool is_num(char c) {
   return ('0' <= c && c <= '9') || c == '.';
@@ -107,13 +111,13 @@ uint16_t consume_num(const char *str, Token *tokens) {
 
   num = strtof(num_buf, NULL);
 
-  tokens[token_idx++] = (Token){.type = TKN_NUMBER, .num = num};
+  tokens[token_idx++] = (Token){.type = TKN_NUMBER, .num = num, .position = lexer_position};
   return len;
 }
 
 uint16_t consume_assignment(const char *str, Token *tokens) {
   if (strncmp(str, ":=", 2) == 0) {
-    tokens[token_idx++] = (Token){.type = TKN_ASSIGNMENT};
+    tokens[token_idx++] = (Token){.type = TKN_ASSIGNMENT, .position = lexer_position};
 
     return 2;
   }
@@ -122,7 +126,7 @@ uint16_t consume_assignment(const char *str, Token *tokens) {
 
 uint16_t consume_def(const char *str, Token *tokens) {
   if (strncmp(str, "def", 3) == 0) {
-    tokens[token_idx++] = (Token){.type = TKN_DEF};
+    tokens[token_idx++] = (Token){.type = TKN_DEF, .position = lexer_position};
 
     return 3;
   }
@@ -159,7 +163,7 @@ uint16_t consume_var(const char *str, Token *tokens) {
 
   memcpy(var, var_buf, len);
 
-  tokens[token_idx++] = (Token){.type = TKN_VAR, .var = var};
+  tokens[token_idx++] = (Token){.type = TKN_VAR, .var = var, .position = lexer_position};
 
   return len;
 }
@@ -168,69 +172,72 @@ uint16_t consume_var(const char *str, Token *tokens) {
 // returns LEXER_ERROR (-1) on error
 int run_lexer(const char *str, Token *tokens, LexerError *err) {
   token_idx = 0;
+  lexer_position = 0;
 
-  while (*str != '\0') {
+  while (str[lexer_position] != '\0') {
+    const char *s = str + lexer_position;
     uint16_t len = 0;
-    if ((len = consume_num(str, tokens))) {
-     str += len;
+    if ((len = consume_num(s, tokens))) {
+     lexer_position += len;
      continue;
     }
 
-    if ((len = consume_assignment(str, tokens))) {
-      str += len;
+    if ((len = consume_assignment(s, tokens))) {
+       lexer_position += len;
       continue;
     }
 
-    if ((len = consume_def(str, tokens))) {
-      str += len;
+    if ((len = consume_def(s, tokens))) {
+       lexer_position += len;
       continue;
     }
 
-    if ((len = consume_var(str, tokens))) {
-      str += len;
+    if ((len = consume_var(s, tokens))) {
+       lexer_position += len;
       continue;
     }
 
-    switch (*str) {
+    switch (*s) {
     case '+':
-      tokens[token_idx++] = (Token){.type = TKN_PLUS};
-      str++;
+      tokens[token_idx++] = (Token){.type = TKN_PLUS, .position = lexer_position};
+      lexer_position++;
       continue;
     case '*':
-      tokens[token_idx++] = (Token){.type = TKN_MULT};
-      str++;
+      tokens[token_idx++] = (Token){.type = TKN_MULT, .position = lexer_position};
+      lexer_position++;
       continue;
     case '-':
-      tokens[token_idx++] = (Token){.type = TKN_MINUS};
-      str++;
+      tokens[token_idx++] = (Token){.type = TKN_MINUS, .position = lexer_position};
+      lexer_position++;
       continue;
     case '/':
-      tokens[token_idx++] = (Token){.type = TKN_DIV};
-      str++;
+      tokens[token_idx++] = (Token){.type = TKN_DIV, .position = lexer_position};
+      lexer_position++;
       continue;
     case '(':
-      tokens[token_idx++] = (Token){.type = TKN_LPAREN};
-      str++;
+      tokens[token_idx++] = (Token){.type = TKN_LPAREN, .position = lexer_position};
+      lexer_position++;
       continue;
     case ')':
-      tokens[token_idx++] = (Token){.type = TKN_RPAREN};
-      str++;
+      tokens[token_idx++] = (Token){.type = TKN_RPAREN, .position = lexer_position};
+      lexer_position++;
       continue;
     case ';':
-      tokens[token_idx++] = (Token){.type = TKN_SEMICOLON};
-      str++;
+      tokens[token_idx++] = (Token){.type = TKN_SEMICOLON, .position = lexer_position};
+      lexer_position++;
       continue;
     }
 
-    if(is_whitespace(*str)) {
+    if(is_whitespace(*s)) {
       // ignore space
-      str++;
+      lexer_position++;
       continue;
     }
 
     // unknown token, or space
     err->type = LEXER_ERR_UNEXPECTED_CHAR;
-    sprintf(err->message, "Unexpected Char %c", *str);
+    err->position = lexer_position;
+    sprintf(err->message, "Unexpected Char %c", *s);
 
     return LEXER_ERROR;
     
