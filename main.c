@@ -38,6 +38,8 @@ int main (int argc, char *argv[]) {
 
   AST *ast = run_parser(tokens, token_count, &parser_err);
   if (ast == NULL) {
+    fprintf(stderr, "%s\n", program);
+    fprintf(stderr, "%*s^\n", parser_err.position, "");
     fprintf(stderr, "Parser Error: %s\n", parser_err.message);
     return 1;
   }

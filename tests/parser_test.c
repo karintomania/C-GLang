@@ -178,6 +178,7 @@ void test_parser_error(void){
 
     assert(ast == NULL);
     ASSERT_EQUAL_NUM(PARSER_ERR_UNEXPECTED_TOKEN, parser_err.type);
+    ASSERT_EQUAL_NUM(4, parser_err.position);
     ASSERT_EQUAL_NUM(0, strcmp("Unexpected token: TKN_PLUS\n", parser_err.message));
   }
 
@@ -194,6 +195,7 @@ void test_parser_error(void){
 
     assert(ast == NULL);
     ASSERT_EQUAL_NUM(PARSER_ERR_UNEXPECTED_TOKEN, parser_err.type);
+    ASSERT_EQUAL_NUM(4, parser_err.position);
     ASSERT_EQUAL_NUM(0, strcmp("Expected variable, got TKN_NUMBER\n", parser_err.message));
   }
 
@@ -212,6 +214,7 @@ void test_parser_error(void){
 
     assert(ast == NULL);
     ASSERT_EQUAL_NUM(PARSER_ERR_UNEXPECTED_EOS, parser_err.type);
+    ASSERT_EQUAL_NUM(2, parser_err.position);
     ASSERT_EQUAL_NUM(0, strcmp("Unexpected EOS\n", parser_err.message));
   }
 }

@@ -115,6 +115,7 @@ enum ParserErrorType {
 typedef struct {
   enum ParserErrorType type;
   char *message;
+  uint16_t position;
 } ParserError;
 
 ParserError parser_error_init(char *buf) {
@@ -209,7 +210,7 @@ void print_ast(AST *ast) {
  Main Parse logic
 ------------------------*/
 
-int position;
+int parser_position;
 int parser_token_count;
 
 AST *run_parser(Token *tokens, int token_count, ParserError *err);
@@ -232,18 +233,18 @@ char *expect_var(Token *token, ParserError *err);
 // returns NULL on error
 AST *run_parser(Token *tokens, int token_count, ParserError *err) {
   parser_token_count = token_count;
-  position = 0;
+  parser_position = 0;
   size_t stmt_idx = 0;
   AST *ast = malloc(sizeof(AST) * MAX_AST_STMTS);
 
-  while (position < token_count) {
+  while (parser_position < token_count) {
     Statement *stmt = parse_statement(tokens, err);
 
     AST_MUST(stmt);
 
     ast->stmts[stmt_idx++] = stmt;
 
-    if (position < token_count) {
+    if (parser_position < token_count) {
       Token *t = expect_token(tokens, TKN_SEMICOLON, err);
       AST_MUST(t);
     }
@@ -262,7 +263,7 @@ Statement *parse_statement(Token *tokens, ParserError *err) {
   if (t->type == TKN_DEF) {
     Statement *stmt = malloc(sizeof(Statement));
 
-    position++;
+    parser_position++;
 
     Definition *def = malloc(sizeof(Definition));
 
@@ -308,7 +309,7 @@ Expression *parse_term2(Token *tokens, ParserError *err) {
   Expression *current = parse_term1(tokens, err);
   AST_MUST(current);
 
-  while (position < parser_token_count) {
+  while (parser_position < parser_token_count) {
     Expression *expr = malloc(sizeof(Expression));
 
     Token *t = peek_token(tokens, err);
@@ -316,7 +317,7 @@ Expression *parse_term2(Token *tokens, ParserError *err) {
 
     if (t->type != TKN_PLUS && t->type != TKN_MINUS) break;
 
-    position++;
+    parser_position++;
 
     Expression *right = parse_term1(tokens, err);
     AST_MUST(right);
@@ -340,7 +341,7 @@ Expression *parse_term1(Token *tokens, ParserError *err) {
   Expression *current = parse_term0(tokens, err);
   AST_MUST(current);
 
-  while (position < parser_token_count) {
+  while (parser_position < parser_token_count) {
     Expression *expr = malloc(sizeof(Expression));
 
     Token *t = peek_token(tokens, err);
@@ -348,7 +349,7 @@ Expression *parse_term1(Token *tokens, ParserError *err) {
 
     if (t->type != TKN_MULT && t->type != TKN_DIV) break;
 
-    position++;
+    parser_position++;
 
     Expression *right = parse_term0(tokens, err);
     AST_MUST(right);
@@ -399,7 +400,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
     Token *t_next  = peek_token(tokens, err);
 
     if (t_next != NULL && t_next->type == TKN_LPAREN) {
-      position++;
+      parser_position++;
       // Parse function call
       Expression *expr = malloc(sizeof(Expression));
       *expr = (Expression){
@@ -443,27 +444,30 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
   }
 
   err->type = PARSER_ERR_UNEXPECTED_TOKEN;
+  err->position = t->position;
   sprintf(err->message, "Unexpected token: %s\n", token_type_name[t->type]);
   return NULL;
 }
 
 Token *expect_token(Token *tokens, enum TokenType type, ParserError *err) {
-    Token t = tokens[position++];
+    Token t = tokens[parser_position++];
 
     if (t.type != type) {
       err->type = PARSER_ERR_UNEXPECTED_TOKEN;
+      err->position = t.position;
        sprintf(err->message, "Expected type: %s, got %s\n", token_type_name[type], token_type_name[t.type]);
        return NULL;
     }
 
-    return tokens+position;
+    return tokens+parser_position;
 }
 
 char *expect_var(Token *tokens, ParserError *err) {
-    Token t = tokens[position++];
+    Token t = tokens[parser_position++];
 
     if (t.type != TKN_VAR) {
       err->type = PARSER_ERR_UNEXPECTED_TOKEN;
+      err->position = t.position;
        sprintf(err->message, "Expected variable, got %s\n", token_type_name[t.type]);
        return NULL;
     }
@@ -475,19 +479,24 @@ Token *get_token(Token *tokens, ParserError *err) {
   Token *t = peek_token(tokens, err);
   AST_MUST(t);
 
-  position++;
+  parser_position++;
 
   return t;
 }
 
 Token *peek_token(Token *tokens, ParserError *err) {
-  if (position >= parser_token_count) {
+  if (parser_position >= parser_token_count) {
     err->type = PARSER_ERR_UNEXPECTED_EOS;
-     sprintf(err->message, "Unexpected EOS\n");
+    sprintf(err->message, "Unexpected EOS\n");
+
+    const Token last_token = tokens[parser_token_count-1];
+    uint16_t position = last_token.position;
+    err->position = position;
+
     return NULL;
   }
 
-  return tokens+position;
+  return tokens+parser_position;
 }
 
 void deinit_statement(Statement *stmt);

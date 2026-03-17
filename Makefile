@@ -6,7 +6,7 @@ cglang:
 	clang main.c -o cglang $(CFLAGS)
 
 run: cglang
-	./cglang -e "def f(x) :="
+	./cglang -e "1 * def   "
 
 test:
 	rm -f ./test
