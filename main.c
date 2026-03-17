@@ -22,8 +22,23 @@ int main (int argc, char *argv[]) {
 
   Token tokens[MAX_TOKENS];
 
-  int token_count = run_lexer(program, tokens);
-  AST *ast = run_parser(tokens, token_count);
+  char error_message_buf[256]; 
+  LexerError lexer_err = lexer_error_init(error_message_buf);
+  ParserError parser_err = parser_error_init(error_message_buf);
+
+  int token_count = run_lexer(program, tokens, &lexer_err);
+
+  if (token_count == LEXER_ERROR) {
+    fprintf(stderr, "Lexer Error: %s\n", lexer_err.message);
+    return 1;
+  }
+
+  AST *ast = run_parser(tokens, token_count, &parser_err);
+  if (ast == NULL) {
+    fprintf(stderr, "Parser Error: %s\n", parser_err.message);
+    return 1;
+  }
+
   Value result = interpret(ast);
 
   if (result.type == VAL_NUM) {

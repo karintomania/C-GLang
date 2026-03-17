@@ -25,6 +25,7 @@
 #define MAX_TESTS 1000
 
 typedef struct {
+    // TODO: remove return int
     int (*ptr)(void);
     const char *name;
 } TestFunc;
@@ -43,12 +44,16 @@ int main(void) {
     TestFunc test = tests[i];
 
     if (test.ptr != NULL) {
+      printf("\n%s started...\n", test.name);
+
       test.ptr();
+
       printf("%s passed!\n", test.name);
     } else {
       break;
     }
   }
+
   printf("All tests passed.\n");
   return 0;
 }

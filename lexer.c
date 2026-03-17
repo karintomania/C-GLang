@@ -37,6 +37,21 @@ const char *token_type_name[] = {
   "TKN_SEMICOLON",
 };
 
+enum LexerErrorType {
+  LEXER_ERR_UNEXPECTED_CHAR,
+};
+
+#define LEXER_ERROR -1
+
+typedef struct {
+  enum LexerErrorType type;
+  char *message;
+} LexerError;
+
+LexerError lexer_error_init(char *buf) {
+  return  (LexerError){.message = buf};
+}
+
 typedef struct {
   enum TokenType type;
   float num;
@@ -58,27 +73,6 @@ void token_print(const Token *t) {
   case TKN_DEF:        printf("DEF");                break;
   case TKN_SEMICOLON:  printf("SEMICOLON");          break;
   }
-}
-
-void tokens_print(const Token *tokens, uint16_t token_count) {
-  for (uint16_t i = 0; i < token_count; i ++) {
-    token_print(&tokens[i]);
-    printf("\n");
-  }
-}
-
-
-bool token_equals(const Token *a, const Token *b) {
-  if (a->type == TKN_NUMBER) {
-    return b->type == TKN_NUMBER && fabs(a->num - b->num) < 0.00001;
-  }
-
-  if (a->type == TKN_VAR) {
-    return b->type == TKN_VAR
-           && (strcmp(a->var, b->var) == 0);
-  }
-
-  return a->type == b->type;
 }
 
 // max of uint16_t
@@ -139,6 +133,10 @@ bool is_var_char(char c) {
   return isalpha(c) || c == '_';
 }
 
+bool is_whitespace(char c) {
+  return isspace((int)c) != 0;
+}
+
 uint16_t consume_var(const char *str, Token *tokens) {
   if (!is_var_char(*str)) return 0;
 
@@ -167,7 +165,8 @@ uint16_t consume_var(const char *str, Token *tokens) {
 }
 
 // returns the total token count
-int run_lexer(const char *str, Token *tokens) {
+// returns LEXER_ERROR (-1) on error
+int run_lexer(const char *str, Token *tokens, LexerError *err) {
   token_idx = 0;
 
   while (*str != '\0') {
@@ -223,9 +222,42 @@ int run_lexer(const char *str, Token *tokens) {
       continue;
     }
 
+    if(is_whitespace(*str)) {
+      // ignore space
+      str++;
+      continue;
+    }
+
     // unknown token, or space
-    str++;
+    err->type = LEXER_ERR_UNEXPECTED_CHAR;
+    sprintf(err->message, "Unexpected Char %c", *str);
+
+    return LEXER_ERROR;
+    
   }
 
   return token_idx;
 }
+
+// Debugging functions
+void tokens_print(const Token *tokens, uint16_t token_count) {
+  for (uint16_t i = 0; i < token_count; i ++) {
+    token_print(&tokens[i]);
+    printf("\n");
+  }
+}
+
+
+bool token_equals(const Token *a, const Token *b) {
+  if (a->type == TKN_NUMBER) {
+    return b->type == TKN_NUMBER && fabs(a->num - b->num) < 0.00001;
+  }
+
+  if (a->type == TKN_VAR) {
+    return b->type == TKN_VAR
+           && (strcmp(a->var, b->var) == 0);
+  }
+
+  return a->type == b->type;
+}
+

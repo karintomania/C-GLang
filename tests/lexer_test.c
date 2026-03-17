@@ -18,16 +18,18 @@ void assert_token_equals(Token *want, Token *got) {
   }
 }
 
-int test_run_lexer(void) {
+void test_lexer_happy_paths(void) {
   Token tokens[MAX_TOKENS];
   char *str;
   int token_count;
+  char error_message_buf[256]; 
+  LexerError err = lexer_error_init(error_message_buf);
 
  {
-    printf("\t%s: math expression\n", "test_run_lexer");
+    printf("\t%s: math expression\n", "test_lexer_happy_paths");
 
     str = "0 + 1 - 2.1 * -3 / 100";
-    token_count = run_lexer(str, tokens);
+    token_count = run_lexer(str, tokens, &err);
 
     ASSERT_EQUAL_NUM(10, token_count);
 
@@ -44,10 +46,10 @@ int test_run_lexer(void) {
   }
 
  {
-    printf("\t%s: handle minus signs\n", "test_run_lexer");
+    printf("\t%s: handle minus signs\n", "test_lexer_happy_paths");
 
     str = "-1 - -2.1";
-    token_count = run_lexer(str, tokens);
+    token_count = run_lexer(str, tokens, &err);
 
     ASSERT_EQUAL_NUM(5, token_count);
 
@@ -59,11 +61,11 @@ int test_run_lexer(void) {
   }
 
  {
-    printf("\t%s: handle parenthesis\n", "test_run_lexser");
+    printf("\t%s: handle parenthesis\n", "test_lexer_happy_paths");
 
     // test parenthesis
     str = "(1 + 2)";
-    token_count = run_lexer(str, tokens);
+    token_count = run_lexer(str, tokens, &err);
 
     ASSERT_EQUAL_NUM(5, token_count);
 
@@ -75,11 +77,11 @@ int test_run_lexer(void) {
   }
 
  {
-    printf("\t%s: assignment\n", "test_run_lexser");
+    printf("\t%s: assignment\n", "test_lexer_happy_paths");
 
     // test assignment
     str = "def foo_bar(baz) := baz * baz;";
-    token_count = run_lexer(str, tokens);
+    token_count = run_lexer(str, tokens, &err);
 
     ASSERT_EQUAL_NUM(10, token_count);
 
@@ -96,10 +98,10 @@ int test_run_lexer(void) {
   }
 
  {
-    printf("\t%s: function def\n", "test_run_lexer");
+    printf("\t%s: function def\n", "test_lexer_happy_paths");
 
     str = "def f(x) := 1-x";
-    token_count = run_lexer(str, tokens);
+    token_count = run_lexer(str, tokens, &err);
 
     ASSERT_EQUAL_NUM(9, token_count);
 
@@ -113,6 +115,29 @@ int test_run_lexer(void) {
     assert_token_equals(&(Token){.type = TKN_MINUS},     &tokens[7]);
     assert_token_equals(&(Token){.type = TKN_VAR, .var = "x"},     &tokens[8]);
   }
+}
 
+void test_lexer_errors(void) {
+  Token tokens[MAX_TOKENS];
+  char *str;
+  int token_count;
+  char error_message_buf[256]; 
+  LexerError err = lexer_error_init(error_message_buf);
+
+ {
+    printf("\t%s: handle error\n", "test_lexer_errors");
+
+    str = "def f(x) = 1-x";
+    token_count = run_lexer(str, tokens, &err);
+
+    ASSERT_EQUAL_NUM(LEXER_ERROR, token_count);
+    ASSERT_EQUAL_NUM(0, strcmp(err.message, "Unexpected Char ="));
+    ASSERT_EQUAL_NUM(LEXER_ERR_UNEXPECTED_CHAR, err.type);
+  }
+}
+
+int test_run_lexer(void) {
+  test_lexer_happy_paths();
+  test_lexer_errors();
   return 1;
 }
