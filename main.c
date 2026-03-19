@@ -39,7 +39,8 @@ int main (int argc, char *argv[]) {
 
     fclose(f);
   } else {
-    fprintf(stderr, "wrong flag: %s", argv[2]);
+    fprintf(stderr, "Unknown flag: %s\n", argv[1]);
+    exit(1);
   }
 
   Token tokens[MAX_TOKENS];

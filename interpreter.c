@@ -1,3 +1,4 @@
+#include <stdint.h>
 #ifndef UNITY_BUILD
   #include "parser.c"
   #include "stb_ds.h"
@@ -66,7 +67,12 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) 
   if (expr->type == EXPRESSION_CALL) {
     float value = expectNumber(interpretExpression(expr->call.expr, dm, assignment));
 
+    if (shgeti(dm, expr->call.name) == -1) {
+      exit(1);
+    }
+
     Definition *d = shget(dm, expr->call.name);
+
     shput(assignment, d->args, value);
 
     return interpretExpression(d->body, dm, assignment);
@@ -74,6 +80,7 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) 
   }
 
   if (expr->type == EXPRESSION_VAR) {
+    printf("var: %s\n", expr->var.name);
     if (shgeti(assignment, expr->var.name) != -1) {
       return (Value){.type = VAL_NUM, .num = shget(assignment, expr->var.name)};
     } else if (shgeti(dm, expr->var.name) != -1) {
@@ -87,6 +94,8 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) 
           .body = def->body,
         },
       };
+    } else {
+      exit(1);
     }
   }
 
