@@ -137,7 +137,7 @@ void test_typechecker_error(void){
   TypeError type_err = type_error_init(err_buf);
 
   {
-    printf("\t%s: parse math expression\n", "test_typechecker_error");
+    printf("\t%s: type mismatch\n", "test_typechecker_error");
 
     Token tokens[MAX_TOKENS];
 
@@ -149,7 +149,59 @@ void test_typechecker_error(void){
 
     Type *res = run_typecheck(ast, &type_err);
 
-    ASSERT_EQUAL_NUM(TYPE_NUM, res->type);
+    assert(NULL == res);
+    ASSERT_EQUAL_NUM(type_err.err_type, TYPE_ERR_TYPE_MISMATCH);
+  }
+
+  {
+    printf("\t%s: undefined var\n", "test_typechecker_error");
+
+    Token tokens[MAX_TOKENS];
+
+    result = run_lexer("def f(x) := y; f(1)", tokens, &lexer_err);
+
+    assert(result != LEXER_ERROR);
+
+    ast = run_parser(tokens, result, &parser_err);
+
+    Type *res = run_typecheck(ast, &type_err);
+
+    assert(NULL == res);
+    ASSERT_EQUAL_NUM(type_err.err_type, TYPE_ERR_UNDEFINED_VAR);
+  }
+
+  {
+    printf("\t%s: undefined func\n", "test_typechecker_error");
+
+    Token tokens[MAX_TOKENS];
+
+    result = run_lexer("g(1)", tokens, &lexer_err);
+
+    assert(result != LEXER_ERROR);
+
+    ast = run_parser(tokens, result, &parser_err);
+
+    Type *res = run_typecheck(ast, &type_err);
+
+    assert(NULL == res);
+    ASSERT_EQUAL_NUM(type_err.err_type, TYPE_ERR_UNDEFINED_FUNC);
+  }
+
+  {
+    printf("\t%s: expr not allowed\n", "test_typechecker_error");
+
+    Token tokens[MAX_TOKENS];
+
+    result = run_lexer("1+3;1;", tokens, &lexer_err);
+
+    assert(result != LEXER_ERROR);
+
+    ast = run_parser(tokens, result, &parser_err);
+
+    Type *res = run_typecheck(ast, &type_err);
+
+    assert(NULL == res);
+    ASSERT_EQUAL_NUM(type_err.err_type, TYPE_ERR_EXPR_NOT_ALLOWED);
   }
 }
 
