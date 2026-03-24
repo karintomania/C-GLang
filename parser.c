@@ -85,7 +85,7 @@ typedef struct {
 
 typedef struct {
   char *name;
-  Expression *expr;
+  Expression *args;
 } ExpCall;
 
 enum ExpressionType {
@@ -178,7 +178,7 @@ void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *writ
     case EXPRESSION_CALL:
       // TODO:update here. no op for now
       *written += sprintf(out + *written, "%*sCALL:%s\n", depth * 2, "", expr->call.name);
-      print_expr_recursive(expr->call.expr, depth+1, out, written);
+      print_expr_recursive(expr->call.args, depth+1, out, written);
       break;
   }
 }
@@ -407,7 +407,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
         .type = EXPRESSION_CALL,
         .call = {
           .name = t->var,
-          .expr = parse_expression(tokens, err)
+          .args = parse_expression(tokens, err)
         },
       };
 
@@ -527,7 +527,7 @@ void deinit_statement(Statement *stmt) {
 
 void deinit_expression(Expression *expr){
   if (expr->type == EXPRESSION_CALL) {
-    deinit_expression(expr->call.expr);
+    deinit_expression(expr->call.args);
     free(expr->call.name);
   }
   if (expr->type == EXPRESSION_VAR) {

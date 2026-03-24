@@ -210,8 +210,6 @@ void test_parser_error(void){
 
     ast = run_parser(tokens, result, &parser_err);
 
-    printf("%s\n", parser_err.message);
-
     assert(ast == NULL);
     ASSERT_EQUAL_NUM(PARSER_ERR_UNEXPECTED_EOS, parser_err.type);
     ASSERT_EQUAL_NUM(2, parser_err.position);

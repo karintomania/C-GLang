@@ -10,12 +10,14 @@
 
 #include "lexer.c"
 #include "parser.c"
+#include "typechecker.c"
 #include "interpreter.c"
 
 #include "tests/test_util.c"
 
 #include "tests/lexer_test.c"
 #include "tests/parser_test.c"
+#include "tests/typechecker_test.c"
 #include "tests/interpreter_test.c"
 
 
@@ -36,6 +38,7 @@ int main(void) {
   TestFunc tests[] = {
     FUNC_DEF(test_run_lexer),
     FUNC_DEF(test_run_parser),
+    FUNC_DEF(test_run_typechecker),
     FUNC_DEF(test_run_interpreter),
     {NULL, ""}, // null termination
   };

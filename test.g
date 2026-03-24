@@ -1,2 +1,1 @@
-def f(x) := x * x * x;
-f(1);
+def f(x) := x * x * x; g(-2);
