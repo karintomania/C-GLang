@@ -1,9 +1,9 @@
-#include <stdint.h>
 #ifndef UNITY_BUILD
   #include "parser.c"
   #include "stb_ds.h"
 #endif
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -81,7 +81,7 @@ TypeError type_error_init(char *buf) {
     }
 
 
-Type *unify(Type *want, Type *got, TypeError *err);
+Type *unify(Type *want, Type *got, uint16_t position, TypeError *err);
 Type *typecheck_expression( Expression *expr, Type *want, TypeMap *dtm, TypeMap *atm, TypeError *err);
 Type *run_typechecker(AST *ast, TypeError *err);
 
@@ -89,7 +89,7 @@ Type type_unknown = (Type){.type = TYPE_UNKNOWN};
 Type type_number = (Type){.type = TYPE_NUM};
 
 // return NULL on error
-Type *unify(Type *want, Type *got, TypeError *err) {
+Type *unify(Type *want, Type *got, uint16_t position, TypeError *err) {
   if (want->type == TYPE_UNKNOWN) return got;
   if (got->type == TYPE_UNKNOWN) return want;
 
@@ -100,6 +100,7 @@ Type *unify(Type *want, Type *got, TypeError *err) {
   if (want->type == TYPE_FUNC && got->type == TYPE_FUNC) {
     if (want->arg_len != got->arg_len) {
       err->err_type = TYPE_ERR_TYPE_MISMATCH;
+      err->position = position;
       err->mm = (TypeErrorTypeMismatch) {.got = got, .want = want};
       sprintf(err->message, "Type mismatch. want: %s, got %s", type_name_str[want->type], type_name_str[got->type]);
       return NULL;
@@ -108,12 +109,12 @@ Type *unify(Type *want, Type *got, TypeError *err) {
     Type **unified_args = malloc(sizeof(Type *) * want->arg_len);
 
     for (size_t i = 0; i < want->arg_len; i ++) {
-      Type *arg = unify(want->args[i], got->args[i], err);
+      Type *arg = unify(want->args[i], got->args[i], position, err);
       TYPE_MUST(arg);
       unified_args[i] = arg;
     }
 
-    Type *unified_result = unify(want->result, got->result, err);
+    Type *unified_result = unify(want->result, got->result, position, err);
     TYPE_MUST(unified_result);
 
     Type *t = malloc(sizeof(Type));
@@ -127,6 +128,7 @@ Type *unify(Type *want, Type *got, TypeError *err) {
   }
 
   err->err_type = TYPE_ERR_TYPE_MISMATCH;
+      err->position = position;
   err->mm = (TypeErrorTypeMismatch) {.got = got, .want = want};
   sprintf(err->message, "Type mismatch. want: %s, got %s", type_name_str[want->type], type_name_str[got->type]);
 
@@ -140,6 +142,8 @@ Type *typecheck_expression(
   TypeMap *assignment_map,
   TypeError *err
 ) {
+  uint16_t position = expr->position;
+
   if (expr->type == EXPRESSION_NUMBER) {
     return &type_number;
   }
@@ -167,16 +171,17 @@ Type *typecheck_expression(
     if (shgeti(def_map, expr->var.name) != -1) {
       Type *got = shget(def_map, expr->var.name);
 
-      return unify(want, got, err);
+      return unify(want, got, position, err);
     }
     
     if (shgeti(assignment_map, expr->var.name) != -1) {
       Type *got = shget(assignment_map, expr->var.name);
 
-      return unify(want, got, err);
+      return unify(want, got, position, err);
     }
     
     err->err_type = TYPE_ERR_UNDEFINED_VAR;
+    err->position = position;
     err->uv = (TypeErrorUndefinedVariable){.var = expr->var.name};
     sprintf(err->message, "Undefined variable: %s", expr->var.name);
     return NULL;
@@ -190,6 +195,7 @@ Type *typecheck_expression(
 
     if(shgeti(def_map, expr->call.name) == -1) {
       err->err_type = TYPE_ERR_UNDEFINED_FUNC;
+      err->position = position;
       err->uf = (TypeErrorUndefinedFunction){.func = expr->call.name};
       sprintf(err->message, "Undefined function: %s", expr->call.name);
       return NULL;
@@ -200,12 +206,13 @@ Type *typecheck_expression(
     Type *unified_def = unify(
       &(Type){.type = TYPE_FUNC, .args = &arg, .arg_len = 1, .result = want},
       def,
+      position,
       err
     );
 
     TYPE_MUST(unified_def);
 
-    return unify(want, unified_def->result, err);
+    return unify(want, unified_def->result, position, err);
   }
 
   fprintf(stderr, "The code shouldn't reach here\n");
@@ -256,6 +263,7 @@ Type *run_typechecker(AST *ast, TypeError *err) {
     if (stmt->type == STMT_EXPR) {
       if (i != ast->count-1) {
         err->err_type = TYPE_ERR_EXPR_NOT_ALLOWED;
+        err->position = stmt->expr->position;
         sprintf(err->message, "Expression not allowed at the end of the program.");
         return NULL;
       }

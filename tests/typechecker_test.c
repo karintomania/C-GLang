@@ -17,14 +17,14 @@ void test_typechecker_unify(void) {
     want = &(Type){.type = TYPE_UNKNOWN};
     got = &(Type){.type = TYPE_NUM};
 
-    result = unify(want, got, &err);
+    result = unify(want, got, 0, &err);
 
     ASSERT_EQUAL_NUM(TYPE_NUM, result->type);
 
     want = &(Type){.type = TYPE_NUM};
     got = &(Type){.type = TYPE_UNKNOWN};
 
-    result = unify(want, got, &err);
+    result = unify(want, got, 0, &err);
 
     ASSERT_EQUAL_NUM(TYPE_NUM, result->type);
   }
@@ -35,7 +35,7 @@ void test_typechecker_unify(void) {
     want = &(Type){.type = TYPE_NUM};
     got = &(Type){.type = TYPE_NUM};
 
-    result = unify(want, got, &err);
+    result = unify(want, got, 0, &err);
 
     ASSERT_EQUAL_NUM(TYPE_NUM, result->type);
   }
@@ -48,7 +48,7 @@ void test_typechecker_unify(void) {
     want = &(Type){.type = TYPE_FUNC, .args = &(arg), .arg_len = 1, .result = result};
     got = &(Type){.type = TYPE_FUNC, .args = &(arg), .arg_len = 1, .result = result};
 
-    result = unify(want, got, &err);
+    result = unify(want, got, 0, &err);
 
     ASSERT_EQUAL_NUM(TYPE_FUNC, result->type);
     ASSERT_EQUAL_NUM(1, result->arg_len);
@@ -64,10 +64,11 @@ void test_typechecker_unify(void) {
     want = &(Type){.type = TYPE_FUNC, .args = &(arg), .arg_len = 1, .result = result};
     got = &(Type){.type = TYPE_NUM};
 
-    result = unify(want, got, &err);
+    result = unify(want, got, 0, &err);
 
     assert(NULL == result);
     ASSERT_EQUAL_NUM(TYPE_ERR_TYPE_MISMATCH, err.err_type);
+    ASSERT_EQUAL_NUM(0, err.position);
     assert(want == err.mm.want);
     assert(got == err.mm.got);
   }
