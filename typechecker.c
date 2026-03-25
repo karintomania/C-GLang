@@ -17,6 +17,12 @@ enum TypeName {
   TYPE_UNKNOWN,
 };
 
+const char* type_name_str[] = {
+  "TYPE_NUM",
+  "TYPE_FUNC",
+  "TYPE_UNKNOWN",
+};
+
 struct Type {
   enum TypeName type;
   // These fields are only for function
@@ -77,7 +83,7 @@ TypeError type_error_init(char *buf) {
 
 Type *unify(Type *want, Type *got, TypeError *err);
 Type *typecheck_expression( Expression *expr, Type *want, TypeMap *dtm, TypeMap *atm, TypeError *err);
-Type *run_typecheck(AST *ast, TypeError *err);
+Type *run_typechecker(AST *ast, TypeError *err);
 
 Type type_unknown = (Type){.type = TYPE_UNKNOWN};
 Type type_number = (Type){.type = TYPE_NUM};
@@ -93,9 +99,9 @@ Type *unify(Type *want, Type *got, TypeError *err) {
 
   if (want->type == TYPE_FUNC && got->type == TYPE_FUNC) {
     if (want->arg_len != got->arg_len) {
-      *err = (TypeError) {
-        .mm = (TypeErrorTypeMismatch) {.got = got, .want = want}
-      };
+      err->err_type = TYPE_ERR_TYPE_MISMATCH;
+      err->mm = (TypeErrorTypeMismatch) {.got = got, .want = want};
+      sprintf(err->message, "Type mismatch. want: %s, got %s", type_name_str[want->type], type_name_str[got->type]);
       return NULL;
     }
 
@@ -103,12 +109,12 @@ Type *unify(Type *want, Type *got, TypeError *err) {
 
     for (size_t i = 0; i < want->arg_len; i ++) {
       Type *arg = unify(want->args[i], got->args[i], err);
-      if (arg == NULL) return NULL;
+      TYPE_MUST(arg);
       unified_args[i] = arg;
     }
 
     Type *unified_result = unify(want->result, got->result, err);
-    if (unified_result == NULL) return NULL;
+    TYPE_MUST(unified_result);
 
     Type *t = malloc(sizeof(Type));
     *t = (Type){
@@ -120,10 +126,9 @@ Type *unify(Type *want, Type *got, TypeError *err) {
     return t;
   }
 
-  *err = (TypeError) {
-    .err_type = TYPE_ERR_TYPE_MISMATCH,
-    .mm = (TypeErrorTypeMismatch) {.got = got, .want = want}
-  };
+  err->err_type = TYPE_ERR_TYPE_MISMATCH;
+  err->mm = (TypeErrorTypeMismatch) {.got = got, .want = want};
+  sprintf(err->message, "Type mismatch. want: %s, got %s", type_name_str[want->type], type_name_str[got->type]);
 
   return NULL;
 }
@@ -141,8 +146,8 @@ Type *typecheck_expression(
 
   if (expr->type == EXPRESSION_BINARY_OPERATOR) {
     // TODO: null check
-    typecheck_expression(expr->bo.left, &type_number, def_map, assignment_map, err);
-    typecheck_expression(expr->bo.right, &type_number, def_map, assignment_map, err);
+    TYPE_MUST(typecheck_expression(expr->bo.left, &type_number, def_map, assignment_map, err));
+    TYPE_MUST(typecheck_expression(expr->bo.right, &type_number, def_map, assignment_map, err));
 
     return &type_number;
   }
@@ -153,22 +158,27 @@ Type *typecheck_expression(
     // TODO: null check
     operand = typecheck_expression(expr->uo.operand, &type_number, def_map, assignment_map, err);
 
+    TYPE_MUST(operand);
+
     return operand;
   }
 
   if (expr->type == EXPRESSION_VAR) {
     if (shgeti(def_map, expr->var.name) != -1) {
-      return shget(def_map, expr->var.name);
+      Type *got = shget(def_map, expr->var.name);
+
+      return unify(want, got, err);
     }
     
     if (shgeti(assignment_map, expr->var.name) != -1) {
-      return shget(assignment_map, expr->var.name);
+      Type *got = shget(assignment_map, expr->var.name);
+
+      return unify(want, got, err);
     }
     
-    *err = (TypeError){
-      .err_type = TYPE_ERR_UNDEFINED_VAR,
-      .uv = (TypeErrorUndefinedVariable){.var = expr->var.name}
-    };
+    err->err_type = TYPE_ERR_UNDEFINED_VAR;
+    err->uv = (TypeErrorUndefinedVariable){.var = expr->var.name};
+    sprintf(err->message, "Undefined variable: %s", expr->var.name);
     return NULL;
   }
 
@@ -176,11 +186,12 @@ Type *typecheck_expression(
     // TODO: multi args
     Type *arg = typecheck_expression(expr->call.args, &(Type){.type = TYPE_NUM}, def_map, assignment_map, err);
 
+    TYPE_MUST(arg);
+
     if(shgeti(def_map, expr->call.name) == -1) {
-      *err = (TypeError){
-        .err_type = TYPE_ERR_UNDEFINED_FUNC,
-        .uf = (TypeErrorUndefinedFunction){.func = expr->call.name}
-      };
+      err->err_type = TYPE_ERR_UNDEFINED_FUNC;
+      err->uf = (TypeErrorUndefinedFunction){.func = expr->call.name};
+      sprintf(err->message, "Undefined function: %s", expr->call.name);
       return NULL;
     }
 
@@ -192,14 +203,16 @@ Type *typecheck_expression(
       err
     );
 
-    return unified_def;
+    TYPE_MUST(unified_def);
+
+    return unify(want, unified_def->result, err);
   }
 
   fprintf(stderr, "The code shouldn't reach here\n");
   exit(1);
 }
 
-Type *run_typecheck(AST *ast, TypeError *err) {
+Type *run_typechecker(AST *ast, TypeError *err) {
   TypeMap *def_map = NULL;
 
   for (size_t i = 0; i < ast->count; i++) {
@@ -224,14 +237,14 @@ Type *run_typecheck(AST *ast, TypeError *err) {
         err
       );
 
+      TYPE_MUST(result);
+
       Type *func_type =  &(Type){
         .type = TYPE_FUNC,
         .args = want_args,
         .arg_len = 1,
         .result = result,
       };
-
-      TYPE_MUST(func_type);
 
       shput(
         def_map,
@@ -242,7 +255,8 @@ Type *run_typecheck(AST *ast, TypeError *err) {
 
     if (stmt->type == STMT_EXPR) {
       if (i != ast->count-1) {
-        *err = (TypeError){.err_type = TYPE_ERR_EXPR_NOT_ALLOWED};
+        err->err_type = TYPE_ERR_EXPR_NOT_ALLOWED;
+        sprintf(err->message, "Expression not allowed at the end of the program.");
         return NULL;
       }
 

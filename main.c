@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #define UNITY_BUILD
 
 #include <stdio.h>
@@ -8,39 +9,51 @@
 
 #include "lexer.c"
 #include "parser.c"
+#include "typechecker.c"
 #include "interpreter.c"
 
 void print_graph(Function f);
 int read_file(FILE *in, char *buf);
+void usage(void);
+
+bool check_type = true;
 
 int main (int argc, char *argv[]) {
-  if (argc != 3) {
-    printf("Usage: cglang -e [program]\n");
-    return 2;
-  }
-
   char *program;
 
-  if (strncmp(argv[1], "-e", 2) == 0) {
-    program = argv[2];
-  } else if (strncmp(argv[1], "-f", 2) == 0) {
-    FILE *f = fopen(argv[2], "r");
+  for (int i = 1; i < argc; i++) { 
+    if (strncmp(argv[i], "-e", 2) == 0) {
+      if (i+1 >= argc) {
+        usage();
+        exit(1);
+      }
+      program = argv[++i];
+    } else if (strncmp(argv[i], "-f", 2) == 0) {
+      if (i+1 >= argc) {
+        usage();
+        exit(1);
+      }
+      FILE *f = fopen(argv[++i], "r");
 
-    if (f == NULL) {
-      fprintf(stderr, "Couldn't open file: %s", argv[2]);
+      if (f == NULL) {
+        fprintf(stderr, "Couldn't open file: %s", argv[2]);
+        exit(1);
+      }
+
+      char buf[2048];
+
+      read_file(f, buf);
+
+      program = buf;
+
+      fclose(f);
+    } else if (strncmp(argv[i], "--no-typecheck", 2) == 0) {
+      check_type= false;
+    } else {
+      fprintf(stderr, "Unknown flag: %s", argv[i]);
+      usage();
       exit(1);
     }
-
-    char buf[2048];
-
-    read_file(f, buf);
-
-    program = buf;
-
-    fclose(f);
-  } else {
-    fprintf(stderr, "Unknown flag: %s\n", argv[1]);
-    exit(1);
   }
 
   Token tokens[MAX_TOKENS];
@@ -67,12 +80,21 @@ int main (int argc, char *argv[]) {
     return 1;
   }
 
+  if (check_type) {
+    TypeError type_err = type_error_init(error_message_buf);
+    Type *res = run_typechecker(ast, &type_err);
+
+    if (res == NULL) {
+      fprintf(stderr, "TypeError\n");
+      return 1;
+    }
+  }
+
   Value result = interpret(ast);
 
   if (result.type == VAL_NUM) {
     printf("%g\n", result.num);
   } else if (result.type == VAL_FUNC) {
-    printf("%s\n", result.func.name);
     print_graph(result.func);
   }
 
@@ -118,4 +140,13 @@ void print_graph(Function f) {
   fprintf(gnuplot, "e\n");
 
   pclose(gnuplot);
+}
+
+void usage(void) {
+    printf(
+      "Usage: cglang\n"
+      "-e [program]\n"
+      "-f [input file]\n"
+      "--no-typecheck\n"
+    );
 }

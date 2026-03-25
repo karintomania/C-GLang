@@ -1,21 +1,24 @@
 .PHONY: test run uninstall
-
+CC=clang
 CFLAGS=-Wall -Wpedantic -Wextra --std=c11
 
 cglang:
-	clang main.c -o cglang $(CFLAGS)
+	$(CC) main.c -o cglang $(CFLAGS)
 
 run: cglang
 	./cglang -f test.g
 
+debug-compile:
+	clang main.c -o cglang $(CFLAGS) -g
+
 test:
 	rm -f ./test
-	clang test.c -o test $(CFLAGS)
+	$(CC) test.c -o test $(CFLAGS)
 	./test
 
 debug-test:
 	rm -f ./test
-	clang test.c -o test $(CFLAGS) -g -lm
+	$(CC) test.c -o test $(CFLAGS) -g -lm
 	lldb ./test
 
 
