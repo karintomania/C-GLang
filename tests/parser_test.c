@@ -217,8 +217,94 @@ void test_parser_error(void){
   }
 }
 
+void test_parser_position(void) {
+  AST *ast;
+  int result;
+
+  char err_buf[256]; 
+  LexerError lexer_err = lexer_error_init(err_buf);
+  ParserError parser_err = parser_error_init(err_buf);
+
+  {
+    printf("\t%s: expression has correct positions\n", "test_parser_position");
+
+    Token tokens[MAX_TOKENS];
+
+    result = run_lexer("1 + -2", tokens, &lexer_err);
+
+    assert(result != LEXER_ERROR);
+
+    ast = run_parser(tokens, result, &parser_err);
+
+    assert(ast != NULL);
+
+    Statement *stmt = ast->stmts[0];
+    Expression *e = stmt->expr;
+    ASSERT_EQUAL_NUM(0, e->position);
+    ASSERT_EQUAL_NUM(EXPRESSION_BINARY_OPERATOR, e->type);
+
+    Expression *l = e->bo.left;
+    ASSERT_EQUAL_NUM(0, l->position);
+    ASSERT_EQUAL_NUM(EXPRESSION_NUMBER, l->type);
+    Expression *r = e->bo.right;
+    ASSERT_EQUAL_NUM(4, r->position);
+    ASSERT_EQUAL_NUM(EXPRESSION_UNARY_OPERATOR, r->type);
+
+    Expression *o = r->uo.operand;
+    ASSERT_EQUAL_NUM(5, o->position);
+    ASSERT_EQUAL_NUM(EXPRESSION_NUMBER, o->type);
+  }
+
+  {
+    printf("\t%s: definition has correct position\n", "test_parser_position");
+
+    Token tokens[MAX_TOKENS];
+
+    result = run_lexer("def f(x) := x", tokens, &lexer_err);
+
+    assert(result != LEXER_ERROR);
+
+    ast = run_parser(tokens, result, &parser_err);
+
+    assert(ast != NULL);
+
+    Statement *stmt = ast->stmts[0];
+    Definition *d = stmt->def;
+    ASSERT_EQUAL_NUM(0, d->position);
+
+    Expression *body = d->body;
+    ASSERT_EQUAL_NUM(12, body->position);
+    ASSERT_EQUAL_NUM(EXPRESSION_VAR, body->type);
+  }
+
+  {
+    printf("\t%s: call has correct position\n", "test_parser_position");
+
+    Token tokens[MAX_TOKENS];
+
+    result = run_lexer("f (1)", tokens, &lexer_err);
+
+    assert(result != LEXER_ERROR);
+
+    ast = run_parser(tokens, result, &parser_err);
+
+    assert(ast != NULL);
+
+    Statement *stmt = ast->stmts[0];
+    Expression *e = stmt->expr;
+    ASSERT_EQUAL_NUM(0, e->position);
+    ASSERT_EQUAL_NUM(EXPRESSION_CALL, e->type);
+
+    Expression *args = e->call.args;
+    ASSERT_EQUAL_NUM(3, args->position);
+    ASSERT_EQUAL_NUM(EXPRESSION_NUMBER, args->type);
+  }
+
+}
+
 int test_run_parser(void) {
   test_parser_happy_path();
   test_parser_error();
+  test_parser_position();
   return 1;
 }

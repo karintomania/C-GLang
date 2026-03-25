@@ -62,6 +62,7 @@ struct Definition {
   char *name;
   char *args; // TODO support multiple args later
   Expression *body;
+  uint16_t position;
 };
 
 typedef struct {
@@ -98,6 +99,7 @@ enum ExpressionType {
 
 struct Expression {
   enum ExpressionType type;
+  uint16_t position;
   union {
     ExpBinaryOperator bo;
     ExpUnaryOperator uo;
@@ -261,6 +263,8 @@ Statement *parse_statement(Token *tokens, ParserError *err) {
   AST_MUST(t);
 
   if (t->type == TKN_DEF) {
+    uint16_t def_position = t->position;
+
     Statement *stmt = malloc(sizeof(Statement));
 
     parser_position++;
@@ -281,7 +285,7 @@ Statement *parse_statement(Token *tokens, ParserError *err) {
     Expression *body= parse_expression(tokens, err);
     AST_MUST(body);
 
-    *def = (Definition){.name = name, .args = arg, .body = body};
+    *def = (Definition){.name = name, .args = arg, .body = body, .position = def_position};
 
     *stmt = (Statement){
       .type = STMT_DEF,
@@ -308,6 +312,7 @@ Expression *parse_expression(Token *tokens, ParserError *err) {
 Expression *parse_term2(Token *tokens, ParserError *err) {
   Expression *current = parse_term1(tokens, err);
   AST_MUST(current);
+  uint16_t position = current->position;
 
   while (parser_position < parser_token_count) {
     Expression *expr = malloc(sizeof(Expression));
@@ -324,6 +329,7 @@ Expression *parse_term2(Token *tokens, ParserError *err) {
 
     *expr = (Expression){
       .type = EXPRESSION_BINARY_OPERATOR,
+      .position = position,
       .bo = {
         .operator = (t->type == TKN_PLUS) ? OP_PLUS : OP_MINUS,
         .left = current,
@@ -340,6 +346,7 @@ Expression *parse_term2(Token *tokens, ParserError *err) {
 Expression *parse_term1(Token *tokens, ParserError *err) {
   Expression *current = parse_term0(tokens, err);
   AST_MUST(current);
+  uint16_t position = current->position;
 
   while (parser_position < parser_token_count) {
     Expression *expr = malloc(sizeof(Expression));
@@ -356,6 +363,7 @@ Expression *parse_term1(Token *tokens, ParserError *err) {
 
     *expr = (Expression){
       .type = EXPRESSION_BINARY_OPERATOR,
+      .position = position,
       .bo = {
         .operator = (t->type == TKN_MULT) ? OP_MULT : OP_DIV,
         .left = current,
@@ -372,6 +380,7 @@ Expression *parse_term1(Token *tokens, ParserError *err) {
 Expression *parse_term0(Token *tokens, ParserError *err) {
   Token *t = get_token(tokens, err);
   AST_MUST(t);
+  uint16_t position = t->position;
   
   // Parse parenthesis
   if (t->type == TKN_LPAREN) {
@@ -387,6 +396,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
     Expression *expr = malloc(sizeof(Expression));
     *expr = (Expression){
       .type = EXPRESSION_UNARY_OPERATOR,
+      .position = position,
       .uo = (ExpUnaryOperator){
           .operator = OP_U_MINUS,
           .operand = parse_term0(tokens, err),
@@ -397,7 +407,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
   }
 
   if (t->type == TKN_VAR) {
-    Token *t_next  = peek_token(tokens, err);
+    Token *t_next = peek_token(tokens, err);
 
     if (t_next != NULL && t_next->type == TKN_LPAREN) {
       parser_position++;
@@ -405,6 +415,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
       Expression *expr = malloc(sizeof(Expression));
       *expr = (Expression){
         .type = EXPRESSION_CALL,
+        .position = position,
         .call = {
           .name = t->var,
           .args = parse_expression(tokens, err)
@@ -420,6 +431,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
 
       *expr = (Expression){
         .type = EXPRESSION_VAR,
+        .position = position,
         .var = {
           .name = t->var,
         },
@@ -429,12 +441,12 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
     }
   }
 
-
   if (t->type == TKN_NUMBER) {
     Expression *expr = malloc(sizeof(Expression));
 
     *expr = (Expression){
       .type = EXPRESSION_NUMBER,
+      .position = position,
       .num = {
         .number = t->num,
       },
