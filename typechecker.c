@@ -61,7 +61,7 @@ typedef struct {
 
 typedef struct {
   enum TypeErrorType err_type;
-  size_t position;
+  uint16_t position;
   char *message;
   union {
     TypeErrorTypeMismatch mm;
@@ -264,7 +264,7 @@ Type *run_typechecker(AST *ast, TypeError *err) {
       if (i != ast->count-1) {
         err->err_type = TYPE_ERR_EXPR_NOT_ALLOWED;
         err->position = stmt->expr->position;
-        sprintf(err->message, "Expression not allowed at the end of the program.");
+        sprintf(err->message, "Expression not allowed other than the end of the program.");
         return NULL;
       }
 

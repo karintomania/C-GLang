@@ -85,7 +85,9 @@ int main (int argc, char *argv[]) {
     Type *res = run_typechecker(ast, &type_err);
 
     if (res == NULL) {
-      fprintf(stderr, "TypeError\n");
+      fprintf(stderr, "%s\n", program);
+      fprintf(stderr, "%*s^\n", type_err.position, "");
+      fprintf(stderr, "Type Error: %s\n", type_err.message);
       return 1;
     }
   }
