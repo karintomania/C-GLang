@@ -82,9 +82,11 @@ TypeError type_error_init(char *buf) {
 
 struct Builtin {
   char *name;
-  Type **args;
+  Type *type;
+  Definition *def;
   uint16_t args_len;
   float (*body)(float);
+  float (*body2)(float, float);
 };
 
 typedef struct {
@@ -93,7 +95,12 @@ typedef struct {
 } BuiltinMap;
 
 struct BuiltinSlice{
-  Builtin *bultins;
+  Builtin *builtins;
+  uint16_t count;
+};
+
+struct BuiltinTypeSlice{
+  Type *types;
   uint16_t count;
 };
 
@@ -247,19 +254,10 @@ Type *run_typechecker(AST *ast, TypeError *err) {
   TypeMap *def_map = NULL;
 
   BuiltinSlice builtins = get_builtins();
-
-  Type *types = malloc(sizeof(Type) * builtins.count);
   for (size_t i = 0; i < builtins.count; i++) {
-    Builtin builtin = builtins.bultins[i];
-    types[i] = (Type){
-        .type = TYPE_FUNC,
-        .args = builtin.args,
-        .args_len = builtin.args_len,
-        .result = &type_number,
-    };
-    shput(def_map, builtin.name, types+i);
+    Builtin builtin = builtins.builtins[i];
+    shput(def_map, builtin.name, builtin.type);
   }
-
 
   for (size_t i = 0; i < ast->count; i++) {
     Statement *stmt = ast->stmts[i];
@@ -323,16 +321,24 @@ Builtin init_builtin(const char *name, uint16_t arg_len, float (*body)(float)) {
   char *owned_name = strndup(name, strlen(name)+1);
   if(owned_name == NULL) assert(0);
 
+  Type *type = malloc(sizeof(Type));
   Type **args = malloc(sizeof(Type *) * arg_len);
 
   for (size_t i=0; i < arg_len; i++) {
     // currenlty all args are number type
     args[i] = &type_number;
   }
+
+  *type = (Type){
+    .type = TYPE_FUNC,
+    .args = args,
+    .args_len = 1,
+    .result = &type_number
+  };
   
   return (Builtin){
     .name = owned_name,
-    .args = args,
+    .type = type,
     .args_len = 1,
     .body = body,
   };
@@ -346,7 +352,7 @@ BuiltinSlice get_builtins(void) {
   builtin_storage[count++] = init_builtin("sqrt", 1, sqrtf);
 
   BuiltinSlice builtins = {
-    .bultins = builtin_storage,
+    .builtins = builtin_storage,
     .count = count,
   };
 

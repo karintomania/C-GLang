@@ -63,7 +63,7 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) 
   BuiltinSlice builtins = get_builtins();
 
   for (uint16_t i = 0; i < builtins.count; i++) {
-    Builtin *b = builtins.bultins + i;
+    Builtin *b = builtins.builtins + i;
     shput(builtin_m, b->name, b);
   }
 
