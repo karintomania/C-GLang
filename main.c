@@ -12,7 +12,7 @@
 #include "typechecker.c"
 #include "interpreter.c"
 
-void print_graph(Function f);
+void print_graph(Function f, int16_t min, int16_t max);
 int read_file(FILE *in, char *buf);
 void usage(void);
 
@@ -97,7 +97,7 @@ int main (int argc, char *argv[]) {
   if (result.type == VAL_NUM) {
     printf("%g\n", result.num);
   } else if (result.type == VAL_FUNC) {
-    print_graph(result.func);
+    print_graph(result.func, -10, 10);
   }
 
   return 0;
@@ -122,21 +122,33 @@ int read_file(FILE *in, char *buf) {
   return 1;
 }
 
-void print_graph(Function f) {
+void print_graph(Function f, int16_t min, int16_t max) {
   FILE *gnuplot = popen("gnuplot -persist", "w");
 
   if (gnuplot == NULL) {
     fprintf(stderr, "failed to open gnuplot.\n");
+    fclose(gnuplot);
     exit(1);
   }
 
   fprintf(gnuplot, "plot '-' with linespoints title 'function<%s>'\n", f.name);
 
-  for (int16_t i = -10; i <= 10; i++) {
+  if (max <= min) {
+    fprintf(stderr, "max (%d) should be more than min (%d).\n", max, min);
+    fclose(gnuplot);
+    exit(1);
+  }
+
+  uint16_t plots = 100; // how many points to plot
+  float step = (max - min) / (float)plots;
+
+  for (uint16_t i = 0; i <= plots; i++) {
+    float x = min + i * step;
+
     Assignment *assignment = NULL;
-    shput(assignment, f.args, (float)i);
+    shput(assignment, f.args, (float)x);
     float num = expectNumber(interpretExpression(f.body, NULL, assignment));
-    fprintf(gnuplot, "%d %g\n", i, num);
+    fprintf(gnuplot, "%g %g\n", x, num);
   }
 
   fprintf(gnuplot, "e\n");

@@ -1,6 +1,7 @@
 #include <stdint.h>
 #ifndef UNITY_BUILD
   #include "parser.c"
+  #include "typechecker.c"
   #include "stb_ds.h"
 #endif
 
@@ -58,6 +59,14 @@ Value interpret(AST *ast) {
 }
 
 Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) {
+  BuiltinMap *builtin_m = NULL;
+  BuiltinSlice builtins = get_builtins();
+
+  for (uint16_t i = 0; i < builtins.count; i++) {
+    Builtin *b = builtins.bultins + i;
+    shput(builtin_m, b->name, b);
+  }
+
   if (expr->type == EXPRESSION_UNARY_OPERATOR) {
     float operand = expectNumber(interpretExpression(expr->uo.operand, dm, assignment));
 
@@ -67,16 +76,20 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) 
   if (expr->type == EXPRESSION_CALL) {
     float value = expectNumber(interpretExpression(expr->call.args, dm, assignment));
 
-    if (shgeti(dm, expr->call.name) == -1) {
-      exit(1);
+    if (shgeti(dm, expr->call.name) != -1) {
+      Definition *d = shget(dm, expr->call.name);
+
+      shput(assignment, d->args, value);
+
+      return interpretExpression(d->body, dm, assignment);
+    } else if (shgeti(builtin_m, expr->var.name) != -1) {
+      Builtin *b = shget(builtin_m, expr->var.name);
+      float res = b->body(value);
+
+      return (Value){.type = VAL_NUM, .num = res};
+    } else  {
+      assert(0);
     }
-
-    Definition *d = shget(dm, expr->call.name);
-
-    shput(assignment, d->args, value);
-
-    return interpretExpression(d->body, dm, assignment);
-    
   }
 
   if (expr->type == EXPRESSION_VAR) {
@@ -94,7 +107,7 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) 
         },
       };
     } else {
-      exit(1);
+      assert(0);
     }
   }
 
@@ -126,7 +139,7 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) 
   }
 
   printf("unknown ast.");
-  exit(1);
+  assert(0);
 }
 
 float expectNumber(Value v) {

@@ -1,3 +1,4 @@
+#include <math.h>
 #ifndef UNITY_BUILD
   #include "parser.c"
   #include "stb_ds.h"
@@ -10,6 +11,10 @@
 #define MAX_ARG_LEN 32
 
 typedef struct Type Type;
+
+typedef struct Builtin Builtin;
+
+typedef struct BuiltinSlice BuiltinSlice;
 
 enum TypeName {
   TYPE_NUM,
@@ -28,7 +33,7 @@ struct Type {
   // These fields are only for function
   // not using union for convenience
   Type **args;
-  size_t arg_len;
+  size_t args_len;
   Type *result;
 };
 
@@ -75,6 +80,23 @@ TypeError type_error_init(char *buf) {
   return  (TypeError){.message = buf};
 }
 
+struct Builtin {
+  char *name;
+  Type **args;
+  uint16_t args_len;
+  float (*body)(float);
+};
+
+typedef struct {
+  char *key;
+  Builtin *value;
+} BuiltinMap;
+
+struct BuiltinSlice{
+  Builtin *bultins;
+  uint16_t count;
+};
+
 #define TYPE_MUST(type) \
     if (type == NULL) { \
       return NULL; \
@@ -84,6 +106,8 @@ TypeError type_error_init(char *buf) {
 Type *unify(Type *want, Type *got, uint16_t position, TypeError *err);
 Type *typecheck_expression( Expression *expr, Type *want, TypeMap *dtm, TypeMap *atm, TypeError *err);
 Type *run_typechecker(AST *ast, TypeError *err);
+
+BuiltinSlice get_builtins(void);
 
 Type type_unknown = (Type){.type = TYPE_UNKNOWN};
 Type type_number = (Type){.type = TYPE_NUM};
@@ -98,7 +122,7 @@ Type *unify(Type *want, Type *got, uint16_t position, TypeError *err) {
   }
 
   if (want->type == TYPE_FUNC && got->type == TYPE_FUNC) {
-    if (want->arg_len != got->arg_len) {
+    if (want->args_len != got->args_len) {
       err->err_type = TYPE_ERR_TYPE_MISMATCH;
       err->position = position;
       err->mm = (TypeErrorTypeMismatch) {.got = got, .want = want};
@@ -106,9 +130,9 @@ Type *unify(Type *want, Type *got, uint16_t position, TypeError *err) {
       return NULL;
     }
 
-    Type **unified_args = malloc(sizeof(Type *) * want->arg_len);
+    Type **unified_args = malloc(sizeof(Type *) * want->args_len);
 
-    for (size_t i = 0; i < want->arg_len; i ++) {
+    for (size_t i = 0; i < want->args_len; i ++) {
       Type *arg = unify(want->args[i], got->args[i], position, err);
       TYPE_MUST(arg);
       unified_args[i] = arg;
@@ -121,7 +145,7 @@ Type *unify(Type *want, Type *got, uint16_t position, TypeError *err) {
     *t = (Type){
       .type = TYPE_FUNC,
       .args = unified_args,
-      .arg_len = want->arg_len,
+      .args_len = want->args_len,
       .result = unified_result,
     };
     return t;
@@ -204,7 +228,7 @@ Type *typecheck_expression(
     Type *def = shget(def_map, expr->call.name);
 
     Type *unified_def = unify(
-      &(Type){.type = TYPE_FUNC, .args = &arg, .arg_len = 1, .result = want},
+      &(Type){.type = TYPE_FUNC, .args = &arg, .args_len = 1, .result = want},
       def,
       position,
       err
@@ -216,11 +240,26 @@ Type *typecheck_expression(
   }
 
   fprintf(stderr, "The code shouldn't reach here\n");
-  exit(1);
+  assert(0);
 }
 
 Type *run_typechecker(AST *ast, TypeError *err) {
   TypeMap *def_map = NULL;
+
+  BuiltinSlice builtins = get_builtins();
+
+  Type *types = malloc(sizeof(Type) * builtins.count);
+  for (size_t i = 0; i < builtins.count; i++) {
+    Builtin builtin = builtins.bultins[i];
+    types[i] = (Type){
+        .type = TYPE_FUNC,
+        .args = builtin.args,
+        .args_len = builtin.args_len,
+        .result = &type_number,
+    };
+    shput(def_map, builtin.name, types+i);
+  }
+
 
   for (size_t i = 0; i < ast->count; i++) {
     Statement *stmt = ast->stmts[i];
@@ -249,7 +288,7 @@ Type *run_typechecker(AST *ast, TypeError *err) {
       Type *func_type =  &(Type){
         .type = TYPE_FUNC,
         .args = want_args,
-        .arg_len = 1,
+        .args_len = 1,
         .result = result,
       };
 
@@ -275,5 +314,41 @@ Type *run_typechecker(AST *ast, TypeError *err) {
   }
 
   fprintf(stderr, "The code shouldn't reach here\n");
-  exit(1);
+  assert(0);
+}
+
+Builtin builtin_storage[128];
+
+Builtin init_builtin(const char *name, uint16_t arg_len, float (*body)(float)) {
+  char *owned_name = strndup(name, strlen(name)+1);
+  if(owned_name == NULL) assert(0);
+
+  Type **args = malloc(sizeof(Type *) * arg_len);
+
+  for (size_t i=0; i < arg_len; i++) {
+    // currenlty all args are number type
+    args[i] = &type_number;
+  }
+  
+  return (Builtin){
+    .name = owned_name,
+    .args = args,
+    .args_len = 1,
+    .body = body,
+  };
+}
+
+BuiltinSlice get_builtins(void) {
+  uint16_t count = 0;
+
+  builtin_storage[count++] = init_builtin("sin", 1, sinf);
+  builtin_storage[count++] = init_builtin("cos", 1, cosf);
+  builtin_storage[count++] = init_builtin("sqrt", 1, sqrtf);
+
+  BuiltinSlice builtins = {
+    .bultins = builtin_storage,
+    .count = count,
+  };
+
+  return builtins;
 }

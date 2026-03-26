@@ -45,13 +45,13 @@ void test_typechecker_unify(void) {
 
     Type *arg = &(Type){.type = TYPE_NUM};
     Type *result = &(Type){.type = TYPE_NUM};
-    want = &(Type){.type = TYPE_FUNC, .args = &(arg), .arg_len = 1, .result = result};
-    got = &(Type){.type = TYPE_FUNC, .args = &(arg), .arg_len = 1, .result = result};
+    want = &(Type){.type = TYPE_FUNC, .args = &(arg), .args_len = 1, .result = result};
+    got = &(Type){.type = TYPE_FUNC, .args = &(arg), .args_len = 1, .result = result};
 
     result = unify(want, got, 0, &err);
 
     ASSERT_EQUAL_NUM(TYPE_FUNC, result->type);
-    ASSERT_EQUAL_NUM(1, result->arg_len);
+    ASSERT_EQUAL_NUM(1, result->args_len);
     ASSERT_EQUAL_NUM(TYPE_NUM, result->args[0]->type);
   }
 
@@ -61,7 +61,7 @@ void test_typechecker_unify(void) {
     Type *arg = &(Type){.type = TYPE_NUM};
     Type *result = &(Type){.type = TYPE_NUM};
 
-    want = &(Type){.type = TYPE_FUNC, .args = &(arg), .arg_len = 1, .result = result};
+    want = &(Type){.type = TYPE_FUNC, .args = &(arg), .args_len = 1, .result = result};
     got = &(Type){.type = TYPE_NUM};
 
     result = unify(want, got, 0, &err);
@@ -96,6 +96,7 @@ void test_typechecker_happy_path(void) {
 
     Type *res = run_typechecker(ast, &type_err);
 
+    assert(res != NULL);
     ASSERT_EQUAL_NUM(TYPE_NUM, res->type);
   }
 
@@ -112,8 +113,9 @@ void test_typechecker_happy_path(void) {
 
     Type *res = run_typechecker(ast, &type_err);
 
+    assert(res != NULL);
     ASSERT_EQUAL_NUM(TYPE_FUNC, res->type);
-    ASSERT_EQUAL_NUM(1, res->arg_len);
+    ASSERT_EQUAL_NUM(1, res->args_len);
     assert(&type_number == res->args[0]);
   }
 
@@ -130,6 +132,24 @@ void test_typechecker_happy_path(void) {
 
     Type *res = run_typechecker(ast, &type_err);
 
+    assert(res != NULL);
+    ASSERT_EQUAL_NUM(TYPE_NUM, res->type);
+  }
+
+  {
+    printf("\t%s: check builtin functions\n", "test_typechecker_happy_path");
+
+    Token tokens[MAX_TOKENS];
+
+    result = run_lexer("def f(x) := sin(x); f(1);", tokens, &lexer_err);
+
+    assert(result != LEXER_ERROR);
+
+    ast = run_parser(tokens, result, &parser_err);
+
+    Type *res = run_typechecker(ast, &type_err);
+
+    assert(res != NULL);
     ASSERT_EQUAL_NUM(TYPE_NUM, res->type);
   }
 
