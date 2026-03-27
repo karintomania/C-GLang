@@ -159,9 +159,9 @@ uint16_t consume_var(const char *str, Token *tokens) {
 
   var_buf[len] = '\0';
 
-  var = malloc(sizeof(char) * len);
+  var = malloc(sizeof(char) * (len + 1));
 
-  memcpy(var, var_buf, len);
+  memcpy(var, var_buf, len + 1);
 
   tokens[token_idx++] = (Token){.type = TKN_VAR, .var = var, .position = lexer_position};
 
@@ -170,7 +170,7 @@ uint16_t consume_var(const char *str, Token *tokens) {
 
 // returns the total token count
 // returns LEXER_ERROR (-1) on error
-int run_lexer(const char *str, Token *tokens, LexerError *err) {
+int16_t run_lexer(const char *str, Token *tokens, LexerError *err) {
   token_idx = 0;
   lexer_position = 0;
 

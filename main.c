@@ -12,7 +12,7 @@
 #include "typechecker.c"
 #include "interpreter.c"
 
-void print_graph(Function f, int16_t min, int16_t max);
+void print_graph(Function f, int16_t min, int16_t max, DefMap *dm, BuiltinMap *bm);
 int read_file(FILE *in, char *buf);
 void usage(void);
 
@@ -92,12 +92,14 @@ int main (int argc, char *argv[]) {
     }
   }
 
-  Value result = interpret(ast);
+  DefMap *dm = NULL;
+  BuiltinMap *bm = NULL;
+  Value result = interpret(ast, dm, bm);
 
   if (result.type == VAL_NUM) {
     printf("%g\n", result.num);
   } else if (result.type == VAL_FUNC) {
-    print_graph(result.func, -10, 10);
+    print_graph(result.func, -10, 10, dm, bm);
   }
 
   return 0;
@@ -122,7 +124,7 @@ int read_file(FILE *in, char *buf) {
   return 1;
 }
 
-void print_graph(Function f, int16_t min, int16_t max) {
+void print_graph(Function f, int16_t min, int16_t max, DefMap *dm, BuiltinMap *bm) {
   FILE *gnuplot = popen("gnuplot -persist", "w");
 
   if (gnuplot == NULL) {
@@ -147,7 +149,7 @@ void print_graph(Function f, int16_t min, int16_t max) {
 
     Assignment *assignment = NULL;
     shput(assignment, f.args, (float)x);
-    float num = expectNumber(interpretExpression(f.body, NULL, assignment));
+    float num = expectNumber(interpretExpression(f.body, dm, assignment, bm));
     fprintf(gnuplot, "%g %g\n", x, num);
   }
 

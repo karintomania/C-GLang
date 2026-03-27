@@ -1,5 +1,6 @@
 #include <math.h>
 #ifndef UNITY_BUILD
+  #include "lexer.c"
   #include "parser.c"
   #include "stb_ds.h"
 #endif
@@ -82,6 +83,8 @@ TypeError type_error_init(char *buf) {
 
 struct Builtin {
   char *name;
+  // func name prefixed with _builtin_
+  char *impl_name;
   Type *type;
   Definition *def;
   uint16_t args_len;
@@ -267,7 +270,8 @@ Type *run_typechecker(AST *ast, TypeError *err) {
       TypeMap *assignment_map = NULL;
 
       // TODO: multi args
-      Type *want_args[1];
+      Type **want_args = malloc(sizeof(Type *) * 1);
+      if (want_args == NULL) assert(0);
 
       shput(assignment_map, def->args, &type_number);
 
@@ -283,7 +287,10 @@ Type *run_typechecker(AST *ast, TypeError *err) {
 
       TYPE_MUST(result);
 
-      Type *func_type =  &(Type){
+      Type *func_type = malloc(sizeof(Type));
+      if (func_type == NULL) assert(0);
+
+      *func_type = (Type){
         .type = TYPE_FUNC,
         .args = want_args,
         .args_len = 1,
@@ -317,9 +324,19 @@ Type *run_typechecker(AST *ast, TypeError *err) {
 
 Builtin builtin_storage[128];
 
-Builtin init_builtin(const char *name, uint16_t arg_len, float (*body)(float)) {
+Builtin init_builtin(
+  const char *name,
+  uint16_t arg_len,
+  float (*body)(float),
+  const char *def
+) {
   char *owned_name = strndup(name, strlen(name)+1);
   if(owned_name == NULL) assert(0);
+
+  uint16_t len = strlen(name) + 10;
+  char *impl_name = malloc(sizeof(char) * len);
+  if(impl_name == NULL) assert(0);
+  sprintf(impl_name, "_builtin_%s", name);
 
   Type *type = malloc(sizeof(Type));
   Type **args = malloc(sizeof(Type *) * arg_len);
@@ -336,8 +353,26 @@ Builtin init_builtin(const char *name, uint16_t arg_len, float (*body)(float)) {
     .result = &type_number
   };
   
+
+  Token tokens[128] = {0};
+  char err_buf[256] = {0};
+  LexerError lexer_err = lexer_error_init(err_buf);
+  ParserError parser_err = parser_error_init(err_buf);
+
+  int16_t token_count = run_lexer(def, tokens, &lexer_err);
+  assert(token_count != LEXER_ERROR);
+
+  AST *ast = run_parser(tokens, token_count, &parser_err);
+  assert(ast != NULL);
+
+  Definition *d = malloc(sizeof(Definition));
+
+  *d = *(ast->stmts[0]->def);
+
   return (Builtin){
     .name = owned_name,
+    .impl_name = impl_name,
+    .def = d,
     .type = type,
     .args_len = 1,
     .body = body,
@@ -347,9 +382,9 @@ Builtin init_builtin(const char *name, uint16_t arg_len, float (*body)(float)) {
 BuiltinSlice get_builtins(void) {
   uint16_t count = 0;
 
-  builtin_storage[count++] = init_builtin("sin", 1, sinf);
-  builtin_storage[count++] = init_builtin("cos", 1, cosf);
-  builtin_storage[count++] = init_builtin("sqrt", 1, sqrtf);
+  builtin_storage[count++] = init_builtin("sin", 1, sinf, "def sin(x) := _builtin_sin(x)");
+  builtin_storage[count++] = init_builtin("cos", 1, cosf, "def cos(x) := _builtin_cos(x)");
+  builtin_storage[count++] = init_builtin("sqrt", 1, sqrtf, "def sqrt(x) := _builtin_sqrt(x)");
 
   BuiltinSlice builtins = {
     .builtins = builtin_storage,
