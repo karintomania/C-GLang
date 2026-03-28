@@ -13,7 +13,7 @@ debug-compile:
 
 test:
 	rm -f ./test
-	$(CC) test.c -o test $(CFLAGS)
+	$(CC) test.c -o test $(CFLAGS) -fsanitize=address 
 	./test
 
 debug-test:

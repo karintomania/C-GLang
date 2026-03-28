@@ -249,7 +249,7 @@ Type *typecheck_expression(
     return unify(want, unified_def->result, position, err);
   }
 
-  fprintf(stderr, "The code shouldn't reach here\n");
+  fprintf(stderr, "Unreachable\n");
   assert(0);
 }
 
@@ -318,7 +318,7 @@ Type *run_typechecker(AST *ast, TypeError *err) {
     }
   }
 
-  fprintf(stderr, "The code shouldn't reach here\n");
+  fprintf(stderr, "Unreachable\n");
   assert(0);
 }
 

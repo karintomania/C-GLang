@@ -92,14 +92,14 @@ int main (int argc, char *argv[]) {
     }
   }
 
-  DefMap *dm = NULL;
-  BuiltinMap *bm = NULL;
-  Value result = interpret(ast, dm, bm);
+  InterpretResult result = interpret(ast);
 
-  if (result.type == VAL_NUM) {
-    printf("%g\n", result.num);
-  } else if (result.type == VAL_FUNC) {
-    print_graph(result.func, -10, 10, dm, bm);
+  Value result_val = result.v;
+
+  if (result_val.type == VAL_NUM) {
+    printf("%g\n", result_val.num);
+  } else if (result_val.type == VAL_FUNC) {
+    print_graph(result_val.func, -10, 10, result.dm, result.bm);
   }
 
   return 0;

@@ -33,15 +33,24 @@ typedef struct {
 } DefMap;
 
 typedef struct {
+  Value v;
+  BuiltinMap *bm;
+  DefMap *dm;
+} InterpretResult;
+
+typedef struct {
   char *key;
   float value;
 } Assignment;
 
-Value interpret(AST *ast, DefMap *dm, BuiltinMap *bm);
+InterpretResult  interpret(AST *ast);
 Value interpretExpression(Expression *ast, DefMap *dm, Assignment *assignment, BuiltinMap *bm);
 float expectNumber(Value v);
 
-Value interpret(AST *ast, DefMap *dm, BuiltinMap *bm) {
+InterpretResult interpret(AST *ast) {
+  DefMap *dm = NULL;
+  BuiltinMap *bm = NULL;
+
   BuiltinSlice builtins = get_builtins();
 
   for (uint16_t i = 0; i < builtins.count; i++) {
@@ -57,11 +66,13 @@ Value interpret(AST *ast, DefMap *dm, BuiltinMap *bm) {
       shput(dm, def->name, def);
     }
     if (stmt->type == STMT_EXPR) {
-      return interpretExpression(stmt->expr, dm, NULL, bm);
+      Value v = interpretExpression(stmt->expr, dm, NULL, bm);
+      return (InterpretResult){.v = v, .bm = bm, .dm = dm};
     }
   }
 
-  return (Value){.type = VAL_NUM, .num =  0};
+  fprintf(stderr, "Unreachable\n");
+  assert(0);
 }
 
 Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, BuiltinMap *bm) {
