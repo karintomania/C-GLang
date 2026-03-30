@@ -78,15 +78,14 @@ void test_typechecker_happy_path(void) {
   AST *ast;
   int result;
 
-  char err_buf[256]; 
+  char err_buf[256];
   LexerError lexer_err = lexer_error_init(err_buf);
   ParserError parser_err = parser_error_init(err_buf);
   TypeError type_err = type_error_init(err_buf);
+  Token tokens[MAX_TOKENS];
 
   {
     printf("\t%s: parse math expression\n", "test_typechecker_happy_path");
-
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("1 + -2 / 4 - 8", tokens, &lexer_err);
 
@@ -102,8 +101,6 @@ void test_typechecker_happy_path(void) {
 
   {
     printf("\t%s: parse def\n", "test_typechecker_happy_path");
-
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("def f(x) := x * x;f", tokens, &lexer_err);
 
@@ -122,8 +119,6 @@ void test_typechecker_happy_path(void) {
   {
     printf("\t%s: check nested functions\n", "test_typechecker_happy_path");
 
-    Token tokens[MAX_TOKENS];
-
     result = run_lexer("def f(x) := -x+3; def g(x):=x*x; f(g(2))", tokens, &lexer_err);
 
     assert(result != LEXER_ERROR);
@@ -138,8 +133,6 @@ void test_typechecker_happy_path(void) {
 
   {
     printf("\t%s: check builtin functions\n", "test_typechecker_happy_path");
-
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("def f(x) := sin(x); f(1);", tokens, &lexer_err);
 
@@ -159,15 +152,14 @@ void test_typechecker_error(void){
   AST *ast;
   int result;
 
-  char err_buf[256]; 
+  char err_buf[256];
   LexerError lexer_err = lexer_error_init(err_buf);
   ParserError parser_err = parser_error_init(err_buf);
   TypeError type_err = type_error_init(err_buf);
+  Token tokens[MAX_TOKENS];
 
   {
     printf("\t%s: type mismatch\n", "test_typechecker_error");
-
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("def f(x) := x; f(f);", tokens, &lexer_err);
 
@@ -184,8 +176,6 @@ void test_typechecker_error(void){
   {
     printf("\t%s: type mismatch 2\n", "test_typechecker_error");
 
-    Token tokens[MAX_TOKENS];
-
     result = run_lexer("def f(x) := x;1 + f", tokens, &lexer_err);
 
     assert(result != LEXER_ERROR);
@@ -200,8 +190,6 @@ void test_typechecker_error(void){
 
   {
     printf("\t%s: undefined var\n", "test_typechecker_error");
-
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("def f(x) := y; f(1)", tokens, &lexer_err);
 
@@ -218,8 +206,6 @@ void test_typechecker_error(void){
   {
     printf("\t%s: undefined var 2\n", "test_typechecker_error");
 
-    Token tokens[MAX_TOKENS];
-
     result = run_lexer("def f(x) := x; f(x)", tokens, &lexer_err);
 
     assert(result != LEXER_ERROR);
@@ -235,8 +221,6 @@ void test_typechecker_error(void){
   {
     printf("\t%s: undefined func\n", "test_typechecker_error");
 
-    Token tokens[MAX_TOKENS];
-
     result = run_lexer("def f(x) := x; g(1)", tokens, &lexer_err);
 
     assert(result != LEXER_ERROR);
@@ -251,8 +235,6 @@ void test_typechecker_error(void){
 
   {
     printf("\t%s: expr not allowed\n", "test_typechecker_error");
-
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("1+3;1;", tokens, &lexer_err);
 

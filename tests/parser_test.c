@@ -10,7 +10,7 @@
 
 void test_parser_happy_path(void) {
   AST *ast;
-  int result;
+  int16_t token_count;
   char *expected;
 
   uint16_t written;
@@ -25,11 +25,11 @@ void test_parser_happy_path(void) {
 
     Token tokens[MAX_TOKENS];
 
-    result = run_lexer("1 + -2 / 4 - 8", tokens, &lexer_err);
+    token_count = run_lexer("1 + -2 / 4 - 8", tokens, &lexer_err);
 
-    assert(result != LEXER_ERROR);
+    assert(token_count != LEXER_ERROR);
 
-    ast = run_parser(tokens, result, &parser_err);
+    ast = run_parser(tokens, token_count, &parser_err);
 
     assert(ast != NULL);
 
@@ -55,9 +55,9 @@ OP:-\n\
 
     Token tokens[MAX_TOKENS];
 
-    result = run_lexer("(1 --2) *-3", tokens, &lexer_err);
+    token_count = run_lexer("(1 --2) *-3", tokens, &lexer_err);
 
-    ast = run_parser(tokens, result, &parser_err);
+    ast = run_parser(tokens, token_count, &parser_err);
 
     assert(ast != NULL);
 
@@ -82,9 +82,9 @@ OP:*\n\
 
     Token tokens[MAX_TOKENS];
 
-    result = run_lexer("f(x+y)", tokens, &lexer_err);
+    token_count = run_lexer("f(x+y)", tokens, &lexer_err);
 
-    ast = run_parser(tokens, result, &parser_err);
+    ast = run_parser(tokens, token_count, &parser_err);
 
     assert(ast != NULL);
 
@@ -107,9 +107,9 @@ CALL:f\n\
 
     Token tokens[MAX_TOKENS];
 
-    result = run_lexer("def f(x) := x + x", tokens, &lexer_err);
+    token_count = run_lexer("def f(x) := x + x", tokens, &lexer_err);
 
-    ast = run_parser(tokens, result, &parser_err);
+    ast = run_parser(tokens, token_count, &parser_err);
 
     assert(ast != NULL);
 
@@ -133,9 +133,9 @@ DEF:f, ARGS:x\n\
 
     Token tokens[MAX_TOKENS];
 
-    result = run_lexer("def f(x) := x + x;\nf(2)", tokens, &lexer_err);
+    token_count = run_lexer("def f(x) := x + x;\nf(2)", tokens, &lexer_err);
 
-    ast = run_parser(tokens, result, &parser_err);
+    ast = run_parser(tokens, token_count, &parser_err);
 
     assert(ast != NULL);
 

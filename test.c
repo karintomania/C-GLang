@@ -57,7 +57,10 @@ int main(void) {
     }
   }
 
-  printf("All tests passed.\n");
+  printf("\n");
+  printf("=======================\n");
+  printf("  All tests passed ✅  \n");
+  printf("=======================\n");
   return 0;
 }
 

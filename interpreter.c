@@ -33,16 +33,31 @@ typedef struct {
 } DefMap;
 
 typedef struct {
+  Value v;
+  BuiltinMap *bm;
+  DefMap *dm;
+} InterpretResult;
+
+typedef struct {
   char *key;
   float value;
 } Assignment;
 
-Value interpret(AST *ast);
-Value interpretExpression(Expression *ast, DefMap *dm, Assignment *assignment);
+InterpretResult  interpret(AST *ast);
+Value interpretExpression(Expression *ast, DefMap *dm, Assignment *assignment, BuiltinMap *bm);
 float expectNumber(Value v);
 
-Value interpret(AST *ast) {
+InterpretResult interpret(AST *ast) {
   DefMap *dm = NULL;
+  BuiltinMap *bm = NULL;
+
+  BuiltinSlice builtins = get_builtins();
+
+  for (uint16_t i = 0; i < builtins.count; i++) {
+    Builtin *b = builtins.builtins + i;
+    shput(bm, b->impl_name, b);
+    shput(dm, b->name, b->def);
+  }
 
   for (size_t i = 0; i < ast->count; i++) {
     Statement *stmt = ast->stmts[i];
@@ -51,39 +66,34 @@ Value interpret(AST *ast) {
       shput(dm, def->name, def);
     }
     if (stmt->type == STMT_EXPR) {
-      return interpretExpression(stmt->expr, dm, NULL);
+      Value v = interpretExpression(stmt->expr, dm, NULL, bm);
+      return (InterpretResult){.v = v, .bm = bm, .dm = dm};
     }
   }
 
-  return (Value){.type = VAL_NUM, .num =  0};
+  fprintf(stderr, "Unreachable\n");
+  assert(0);
 }
 
-Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) {
-  BuiltinMap *builtin_m = NULL;
-  BuiltinSlice builtins = get_builtins();
-
-  for (uint16_t i = 0; i < builtins.count; i++) {
-    Builtin *b = builtins.bultins + i;
-    shput(builtin_m, b->name, b);
-  }
+Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, BuiltinMap *bm) {
 
   if (expr->type == EXPRESSION_UNARY_OPERATOR) {
-    float operand = expectNumber(interpretExpression(expr->uo.operand, dm, assignment));
+    float operand = expectNumber(interpretExpression(expr->uo.operand, dm, assignment, bm));
 
     return (Value){.type = VAL_NUM, .num =  operand * -1};
   }
 
   if (expr->type == EXPRESSION_CALL) {
-    float value = expectNumber(interpretExpression(expr->call.args, dm, assignment));
+    float value = expectNumber(interpretExpression(expr->call.args, dm, assignment, bm));
 
     if (shgeti(dm, expr->call.name) != -1) {
       Definition *d = shget(dm, expr->call.name);
 
       shput(assignment, d->args, value);
 
-      return interpretExpression(d->body, dm, assignment);
-    } else if (shgeti(builtin_m, expr->var.name) != -1) {
-      Builtin *b = shget(builtin_m, expr->var.name);
+      return interpretExpression(d->body, dm, assignment, bm);
+    } else if (shgeti(bm, expr->var.name) != -1) {
+      Builtin *b = shget(bm, expr->var.name);
       float res = b->body(value);
 
       return (Value){.type = VAL_NUM, .num = res};
@@ -119,20 +129,20 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment) 
     float value;
     switch (expr->bo.operator) {
       case OP_PLUS:
-        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment))
-               + expectNumber(interpretExpression(expr->bo.right, dm, assignment));
+        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment, bm))
+               + expectNumber(interpretExpression(expr->bo.right, dm, assignment, bm));
         break;
       case OP_MINUS:
-        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment))
-               - expectNumber(interpretExpression(expr->bo.right, dm, assignment));
+        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment, bm))
+               - expectNumber(interpretExpression(expr->bo.right, dm, assignment, bm));
         break;
       case OP_MULT:
-        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment))
-               * expectNumber(interpretExpression(expr->bo.right, dm, assignment));
+        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment, bm))
+               * expectNumber(interpretExpression(expr->bo.right, dm, assignment, bm));
         break;
       case OP_DIV:
-        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment))
-               / expectNumber(interpretExpression(expr->bo.right, dm, assignment));
+        value = expectNumber(interpretExpression(expr->bo.left, dm, assignment, bm))
+               / expectNumber(interpretExpression(expr->bo.right, dm, assignment, bm));
         break;
     }
     return (Value){.type = VAL_NUM, .num =  value};
