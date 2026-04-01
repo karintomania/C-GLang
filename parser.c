@@ -132,7 +132,13 @@ void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *writ
 void print_stmt(Statement *stmt, int depth, char *out, uint16_t *written) {
   if (stmt->type == STMT_DEF) {
     Definition *def = stmt->def;
-    *written += sprintf(out + *written, "%*sDEF:%s, ARGS:%s\n", depth * 2, "", def->name, def->args[0]);
+    *written += sprintf(out + *written, "%*sDEF:%s, ARGS:", depth * 2, "", def->name);
+
+    for (uint16_t i = 0; i < def->args_len; i++) {
+      *written += sprintf(out + *written, "%s", def->args[i]);
+      *written += sprintf(out + *written, (i == def->args_len-1) ? "\n" : ", ");
+    }
+
     *written += sprintf(out + *written, "%*sBODY:\n", ++depth * 2, "");
       print_expr_recursive(def->body, depth+1, out, written);
   } else {
@@ -313,6 +319,19 @@ Definition *parse_definition(Token *tokens, ParserError *err) {
   AST_MUST(arg);
 
   args[args_len++] = arg;
+
+  Token *next_t;
+  while (1) {
+    next_t = peek_token(tokens, err);
+    if (next_t->type != TKN_COMMA) {
+      break;
+    }
+    parser_position++;
+    arg = expect_var(tokens, err);
+    AST_MUST(arg);
+
+    args[args_len++] = arg;
+  };
 
   AST_MUST(expect_token(tokens, TKN_RPAREN, err));
   AST_MUST(expect_token(tokens, TKN_ASSIGNMENT, err));

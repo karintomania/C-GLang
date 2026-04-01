@@ -129,6 +129,32 @@ DEF:f, ARGS:x\n\
   }
 
  {
+    printf("\t%s: parse multi-args function definition\n", "test_parser_happy_path");
+
+    Token tokens[MAX_TOKENS];
+
+    token_count = run_lexer("def f(x, y) := x + y", tokens, &lexer_err);
+
+    ast = run_parser(tokens, token_count, &parser_err);
+
+    assert(ast != NULL);
+
+    written = sprint_ast(ast, buf);
+
+    expected = "\
+DEF:f, ARGS:x, y\n\
+  BODY:\n\
+    OP:+\n\
+      VAR:x\n\
+      VAR:y\n\
+";
+
+    ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+
+    deinit_ast(ast);
+  }
+
+ {
     printf("\t%s: parse function def and call\n", "test_parser_happy_path");
 
     Token tokens[MAX_TOKENS];
