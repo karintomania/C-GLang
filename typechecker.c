@@ -273,7 +273,7 @@ Type *run_typechecker(AST *ast, TypeError *err) {
       Type **want_args = malloc(sizeof(Type *) * 1);
       if (want_args == NULL) assert(0);
 
-      shput(assignment_map, def->args, &type_number);
+      shput(assignment_map, def->args[0], &type_number);
 
       want_args[0] = &type_number;
 

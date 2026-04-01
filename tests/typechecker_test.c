@@ -110,6 +110,7 @@ void test_typechecker_happy_path(void) {
 
     Type *res = run_typechecker(ast, &type_err);
 
+    printf("%s", type_err.message);
     assert(res != NULL);
     ASSERT_EQUAL_NUM(TYPE_FUNC, res->type);
     ASSERT_EQUAL_NUM(1, res->args_len);

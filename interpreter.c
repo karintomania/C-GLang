@@ -15,7 +15,8 @@ enum ValueType {
 
 struct Function {
   char *name;
-  char *args;
+  char **args;
+  uint16_t args_len;
   Expression *body;
 };
 
@@ -89,7 +90,8 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, 
     if (shgeti(dm, expr->call.name) != -1) {
       Definition *d = shget(dm, expr->call.name);
 
-      shput(assignment, d->args, value);
+      // TODO: multi args
+      shput(assignment, d->args[0], value);
 
       return interpretExpression(d->body, dm, assignment, bm);
     } else if (shgeti(bm, expr->var.name) != -1) {
@@ -112,6 +114,7 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, 
         .type = VAL_FUNC,
         .func = (Function){
           .args = def->args,
+          .args_len = def->args_len,
           .name = expr->var.name,
           .body = def->body,
         },
