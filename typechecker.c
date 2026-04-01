@@ -136,7 +136,7 @@ Type *unify(Type *want, Type *got, uint16_t position, TypeError *err) {
       err->err_type = TYPE_ERR_TYPE_MISMATCH;
       err->position = position;
       err->mm = (TypeErrorTypeMismatch) {.got = got, .want = want};
-      sprintf(err->message, "Type mismatch. want: %s, got %s", type_name_str[want->type], type_name_str[got->type]);
+      sprintf(err->message, "Type mismatch. want: %s with %zd args, got %s with %zd args", type_name_str[want->type], want->args_len, type_name_str[got->type], got->args_len);
       return NULL;
     }
 
@@ -222,11 +222,6 @@ Type *typecheck_expression(
   }
 
   if (expr->type == EXPRESSION_CALL) {
-    // TODO: multi args
-    Type *arg = typecheck_expression(expr->call.args, &(Type){.type = TYPE_NUM}, def_map, assignment_map, err);
-
-    TYPE_MUST(arg);
-
     if(shgeti(def_map, expr->call.name) == -1) {
       err->err_type = TYPE_ERR_UNDEFINED_FUNC;
       err->position = position;
@@ -237,8 +232,21 @@ Type *typecheck_expression(
 
     Type *def = shget(def_map, expr->call.name);
 
+    Type **args = malloc(sizeof(Type *) * MAX_ARG_LEN);
+
+    for (uint16_t i = 0; i < expr->call.args_len; i++) {
+      Type *arg = typecheck_expression(expr->call.args[i], &(Type){.type = TYPE_NUM}, def_map, assignment_map, err);
+      TYPE_MUST(arg);
+      args[i] = arg;
+    }
+
     Type *unified_def = unify(
-      &(Type){.type = TYPE_FUNC, .args = &arg, .args_len = 1, .result = want},
+      &(Type){
+        .type = TYPE_FUNC,
+        .args = args,
+        .args_len = expr->call.args_len,
+        .result = want
+      },
       def,
       position,
       err
@@ -277,6 +285,16 @@ Type *run_typechecker(AST *ast, TypeError *err) {
         want_args[i] = &type_number;
       }
 
+      // register temporary definition for recursive function
+      Type *tmp_def = &(Type){
+        .type = TYPE_FUNC,
+        .args = want_args,
+        .args_len = def->args_len,
+        .result = &type_unknown,
+      };
+
+      shput(def_map, def->name, tmp_def);
+
       Type *result = typecheck_expression(
         def->body,
         &type_number,
@@ -293,7 +311,7 @@ Type *run_typechecker(AST *ast, TypeError *err) {
       *func_type = (Type){
         .type = TYPE_FUNC,
         .args = want_args,
-        .args_len = 1,
+        .args_len = def->args_len,
         .result = result,
       };
 
@@ -321,6 +339,11 @@ Type *run_typechecker(AST *ast, TypeError *err) {
   fprintf(stderr, "Unreachable\n");
   assert(0);
 }
+
+
+/*---------------------
+ Builtin Implementation
+------------------------*/
 
 Builtin builtin_storage[128];
 
