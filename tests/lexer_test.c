@@ -115,6 +115,27 @@ void test_lexer_happy_paths(void) {
     assert_token_equals(&(Token){.type = TKN_MINUS},     &tokens[7]);
     assert_token_equals(&(Token){.type = TKN_VAR, .var = "x"},     &tokens[8]);
   }
+
+ {
+    printf("\t%s: function with multi args\n", "test_lexer_happy_paths");
+
+    str = "def f(x, y) := x - y";
+    token_count = run_lexer(str, tokens, &err);
+
+    ASSERT_EQUAL_NUM(11, token_count);
+
+    assert_token_equals(&(Token){.type = TKN_DEF},               &tokens[0]);
+    assert_token_equals(&(Token){.type = TKN_VAR, .var = "f"},   &tokens[1]);
+    assert_token_equals(&(Token){.type = TKN_LPAREN},            &tokens[2]);
+    assert_token_equals(&(Token){.type = TKN_VAR, .var = "x"},   &tokens[3]);
+    assert_token_equals(&(Token){.type = TKN_COMMA},             &tokens[4]);
+    assert_token_equals(&(Token){.type = TKN_VAR, .var = "y"},   &tokens[5]);
+    assert_token_equals(&(Token){.type = TKN_RPAREN},            &tokens[6]);
+    assert_token_equals(&(Token){.type = TKN_ASSIGNMENT},        &tokens[7]);
+    assert_token_equals(&(Token){.type = TKN_VAR, .var = "x"},   &tokens[8]);
+    assert_token_equals(&(Token){.type = TKN_MINUS},             &tokens[9]);
+    assert_token_equals(&(Token){.type = TKN_VAR, .var = "y"},   &tokens[10]);
+  }
 }
 
 void test_lexer_errors(void) {
