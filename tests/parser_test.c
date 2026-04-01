@@ -138,7 +138,6 @@ DEF:f, ARGS:x\n\
     ast = run_parser(tokens, token_count, &parser_err);
 
     assert(ast != NULL);
-
     written = sprint_ast(ast, buf);
 
     expected = "\
@@ -147,6 +146,32 @@ DEF:f, ARGS:x, y\n\
     OP:+\n\
       VAR:x\n\
       VAR:y\n\
+";
+
+    ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+
+    deinit_ast(ast);
+  }
+
+ {
+    printf("\t%s: parse multi-args function call\n", "test_parser_happy_path");
+
+    Token tokens[MAX_TOKENS];
+
+    token_count = run_lexer("f(2, 1+1)", tokens, &lexer_err);
+
+    ast = run_parser(tokens, token_count, &parser_err);
+
+    assert(ast != NULL);
+
+    written = sprint_ast(ast, buf);
+
+    expected = "\
+CALL:f\n\
+  NUM:2\n\
+  OP:+\n\
+    NUM:1\n\
+    NUM:1\n\
 ";
 
     ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
@@ -321,7 +346,7 @@ void test_parser_position(void) {
     ASSERT_EQUAL_NUM(0, e->position);
     ASSERT_EQUAL_NUM(EXPRESSION_CALL, e->type);
 
-    Expression *args = e->call.args;
+    Expression *args = e->call.args[0];
     ASSERT_EQUAL_NUM(3, args->position);
     ASSERT_EQUAL_NUM(EXPRESSION_NUMBER, args->type);
   }

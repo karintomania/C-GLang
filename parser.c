@@ -88,7 +88,8 @@ typedef struct {
 
 typedef struct {
   char *name;
-  Expression *args;
+  Expression **args;
+  uint16_t args_len;
 } ExpCall;
 
 enum ExpressionType {
@@ -188,7 +189,9 @@ void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *writ
     case EXPRESSION_CALL:
       // TODO:update here. no op for now
       *written += sprintf(out + *written, "%*sCALL:%s\n", depth * 2, "", expr->call.name);
-      print_expr_recursive(expr->call.args, depth+1, out, written);
+      for (uint16_t i = 0; i < expr->call.args_len; i++) {
+        print_expr_recursive(expr->call.args[i], depth+1, out, written);
+      }
       break;
   }
 }
@@ -247,6 +250,7 @@ AST *run_parser(Token *tokens, int token_count, ParserError *err) {
   parser_position = 0;
   size_t stmt_idx = 0;
   AST *ast = malloc(sizeof(AST) * MAX_AST_STMTS);
+  assert(ast != NULL);
 
   while (parser_position < token_count) {
     Statement *stmt = parse_statement(tokens, err);
@@ -273,6 +277,7 @@ Statement *parse_statement(Token *tokens, ParserError *err) {
 
   if (t->type == TKN_DEF) {
     Statement *stmt = malloc(sizeof(Statement));
+    assert(stmt != NULL);
 
     Definition *def = parse_definition(tokens, err);
     AST_MUST(def);
@@ -285,6 +290,7 @@ Statement *parse_statement(Token *tokens, ParserError *err) {
     return stmt;
   } else {
     Statement *stmt = malloc(sizeof(Statement));
+    assert(stmt != NULL);
 
     Expression *expr = parse_expression(tokens, err);
     AST_MUST(expr);
@@ -306,6 +312,7 @@ Definition *parse_definition(Token *tokens, ParserError *err) {
   parser_position++;
 
   Definition *def = malloc(sizeof(Definition));
+  assert(def != NULL);
 
   char *name = expect_var(tokens, err);
   AST_MUST(name);
@@ -313,6 +320,8 @@ Definition *parse_definition(Token *tokens, ParserError *err) {
   AST_MUST(expect_token(tokens, TKN_LPAREN, err));
 
   char **args = malloc(sizeof(char *) * MAX_ARGS_LEN);
+  assert(args != NULL);
+
   uint16_t args_len = 0;
 
   char *arg = expect_var(tokens, err);
@@ -361,6 +370,7 @@ Expression *parse_term2(Token *tokens, ParserError *err) {
 
   while (parser_position < parser_token_count) {
     Expression *expr = malloc(sizeof(Expression));
+    assert(expr != NULL);
 
     Token *t = peek_token(tokens, err);
     AST_MUST(t);
@@ -395,6 +405,7 @@ Expression *parse_term1(Token *tokens, ParserError *err) {
 
   while (parser_position < parser_token_count) {
     Expression *expr = malloc(sizeof(Expression));
+    assert(expr != NULL);
 
     Token *t = peek_token(tokens, err);
     AST_MUST(t);
@@ -439,6 +450,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
 
   if (t->type == TKN_MINUS) {
     Expression *expr = malloc(sizeof(Expression));
+    assert(expr != NULL);
     *expr = (Expression){
       .type = EXPRESSION_UNARY_OPERATOR,
       .position = position,
@@ -458,21 +470,47 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
       parser_position++;
       // Parse function call
       Expression *expr = malloc(sizeof(Expression));
+      assert(expr != NULL);
+      Expression **args = malloc(sizeof(Expression *) * MAX_ARGS_LEN);
+      assert(args != NULL);
+
+      uint16_t args_len = 0;
+      while (1) {
+        args[args_len++] = parse_expression(tokens, err);
+        t_next = get_token(tokens, err);
+
+        if (t_next->type == TKN_COMMA) {
+          continue;
+        }else if (t_next->type == TKN_RPAREN) {
+          break;
+        } else {
+          err->type = PARSER_ERR_UNEXPECTED_TOKEN;
+          err->position = t_next->position;
+          sprintf(
+            err->message,
+            "Expected type: %s, got %s\n",
+            token_type_name[t_next->type],
+            token_type_name[t_next->type]
+          );
+           return NULL;
+        }
+      }
+
       *expr = (Expression){
         .type = EXPRESSION_CALL,
         .position = position,
         .call = {
           .name = t->var,
-          .args = parse_expression(tokens, err)
+          .args = args,
+          .args_len = args_len,
         },
       };
-
-      AST_MUST(expect_token(tokens, TKN_RPAREN, err));
 
       return expr;
     } else {
       // Parse variable
       Expression *expr = malloc(sizeof(Expression));
+      assert(expr != NULL);
 
       *expr = (Expression){
         .type = EXPRESSION_VAR,
@@ -488,6 +526,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
 
   if (t->type == TKN_NUMBER) {
     Expression *expr = malloc(sizeof(Expression));
+    assert(expr != NULL);
 
     *expr = (Expression){
       .type = EXPRESSION_NUMBER,

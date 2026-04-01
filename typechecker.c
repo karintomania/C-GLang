@@ -269,13 +269,13 @@ Type *run_typechecker(AST *ast, TypeError *err) {
       Definition *def = stmt->def;
       TypeMap *assignment_map = NULL;
 
-      // TODO: multi args
-      Type **want_args = malloc(sizeof(Type *) * 1);
-      if (want_args == NULL) assert(0);
+      Type **want_args = malloc(sizeof(Type *) * def->args_len);
+      assert(want_args != NULL);
 
-      shput(assignment_map, def->args[0], &type_number);
-
-      want_args[0] = &type_number;
+      for (uint16_t i = 0; i < def->args_len; i++) {
+        shput(assignment_map, def->args[i], &type_number);
+        want_args[i] = &type_number;
+      }
 
       Type *result = typecheck_expression(
         def->body,
@@ -288,7 +288,7 @@ Type *run_typechecker(AST *ast, TypeError *err) {
       TYPE_MUST(result);
 
       Type *func_type = malloc(sizeof(Type));
-      if (func_type == NULL) assert(0);
+      assert(func_type != NULL);
 
       *func_type = (Type){
         .type = TYPE_FUNC,
@@ -331,11 +331,11 @@ Builtin init_builtin(
   const char *def
 ) {
   char *owned_name = strndup(name, strlen(name)+1);
-  if(owned_name == NULL) assert(0);
+  assert(owned_name != NULL);
 
   uint16_t len = strlen(name) + 10;
   char *impl_name = malloc(sizeof(char) * len);
-  if(impl_name == NULL) assert(0);
+  assert(impl_name != NULL);
   sprintf(impl_name, "_builtin_%s", name);
 
   Type *type = malloc(sizeof(Type));
