@@ -88,8 +88,7 @@ struct Builtin {
   Type *type;
   Definition *def;
   uint16_t args_len;
-  float (*body)(float);
-  float (*body2)(float, float);
+  float (*body)(int count, float *args);
 };
 
 typedef struct {
@@ -136,7 +135,7 @@ Type *unify(Type *want, Type *got, uint16_t position, TypeError *err) {
       err->err_type = TYPE_ERR_TYPE_MISMATCH;
       err->position = position;
       err->mm = (TypeErrorTypeMismatch) {.got = got, .want = want};
-      sprintf(err->message, "Type mismatch. want: %s, got %s", type_name_str[want->type], type_name_str[got->type]);
+      sprintf(err->message, "Type mismatch. want: %s with %zd args, got %s with %zd args", type_name_str[want->type], want->args_len, type_name_str[got->type], got->args_len);
       return NULL;
     }
 
@@ -222,11 +221,6 @@ Type *typecheck_expression(
   }
 
   if (expr->type == EXPRESSION_CALL) {
-    // TODO: multi args
-    Type *arg = typecheck_expression(expr->call.args, &(Type){.type = TYPE_NUM}, def_map, assignment_map, err);
-
-    TYPE_MUST(arg);
-
     if(shgeti(def_map, expr->call.name) == -1) {
       err->err_type = TYPE_ERR_UNDEFINED_FUNC;
       err->position = position;
@@ -237,8 +231,21 @@ Type *typecheck_expression(
 
     Type *def = shget(def_map, expr->call.name);
 
+    Type **args = malloc(sizeof(Type *) * MAX_ARG_LEN);
+
+    for (uint16_t i = 0; i < expr->call.args_len; i++) {
+      Type *arg = typecheck_expression(expr->call.args[i], &(Type){.type = TYPE_NUM}, def_map, assignment_map, err);
+      TYPE_MUST(arg);
+      args[i] = arg;
+    }
+
     Type *unified_def = unify(
-      &(Type){.type = TYPE_FUNC, .args = &arg, .args_len = 1, .result = want},
+      &(Type){
+        .type = TYPE_FUNC,
+        .args = args,
+        .args_len = expr->call.args_len,
+        .result = want
+      },
       def,
       position,
       err
@@ -269,13 +276,23 @@ Type *run_typechecker(AST *ast, TypeError *err) {
       Definition *def = stmt->def;
       TypeMap *assignment_map = NULL;
 
-      // TODO: multi args
-      Type **want_args = malloc(sizeof(Type *) * 1);
-      if (want_args == NULL) assert(0);
+      Type **want_args = malloc(sizeof(Type *) * def->args_len);
+      assert(want_args != NULL);
 
-      shput(assignment_map, def->args, &type_number);
+      for (uint16_t i = 0; i < def->args_len; i++) {
+        shput(assignment_map, def->args[i], &type_number);
+        want_args[i] = &type_number;
+      }
 
-      want_args[0] = &type_number;
+      // register temporary definition for recursive function
+      Type *tmp_def = &(Type){
+        .type = TYPE_FUNC,
+        .args = want_args,
+        .args_len = def->args_len,
+        .result = &type_unknown,
+      };
+
+      shput(def_map, def->name, tmp_def);
 
       Type *result = typecheck_expression(
         def->body,
@@ -288,12 +305,12 @@ Type *run_typechecker(AST *ast, TypeError *err) {
       TYPE_MUST(result);
 
       Type *func_type = malloc(sizeof(Type));
-      if (func_type == NULL) assert(0);
+      assert(func_type != NULL);
 
       *func_type = (Type){
         .type = TYPE_FUNC,
         .args = want_args,
-        .args_len = 1,
+        .args_len = def->args_len,
         .result = result,
       };
 
@@ -322,26 +339,31 @@ Type *run_typechecker(AST *ast, TypeError *err) {
   assert(0);
 }
 
+
+/*---------------------
+ Builtin Implementation
+------------------------*/
+
 Builtin builtin_storage[128];
 
 Builtin init_builtin(
   const char *name,
-  uint16_t arg_len,
-  float (*body)(float),
+  uint16_t args_len,
+  float (*body)(int count, float *args),
   const char *def
 ) {
   char *owned_name = strndup(name, strlen(name)+1);
-  if(owned_name == NULL) assert(0);
+  assert(owned_name != NULL);
 
   uint16_t len = strlen(name) + 10;
   char *impl_name = malloc(sizeof(char) * len);
-  if(impl_name == NULL) assert(0);
+  assert(impl_name != NULL);
   sprintf(impl_name, "_builtin_%s", name);
 
   Type *type = malloc(sizeof(Type));
-  Type **args = malloc(sizeof(Type *) * arg_len);
+  Type **args = malloc(sizeof(Type *) * args_len);
 
-  for (size_t i=0; i < arg_len; i++) {
+  for (uint16_t i=0; i < args_len; i++) {
     // currenlty all args are number type
     args[i] = &type_number;
   }
@@ -349,10 +371,9 @@ Builtin init_builtin(
   *type = (Type){
     .type = TYPE_FUNC,
     .args = args,
-    .args_len = 1,
+    .args_len = args_len,
     .result = &type_number
   };
-  
 
   Token tokens[128] = {0};
   char err_buf[256] = {0};
@@ -374,17 +395,51 @@ Builtin init_builtin(
     .impl_name = impl_name,
     .def = d,
     .type = type,
-    .args_len = 1,
+    .args_len = args_len,
     .body = body,
   };
+}
+
+float sin_impl(int count, float *args) {
+  assert(count == 1);
+  float f = args[0];
+  return sinf(f);
+}
+
+float cos_impl(int count, float *args) {
+  assert(count == 1);
+  float f = args[0];
+  return cosf(f);
+}
+
+float sqrt_impl(int count, float *args) {
+  assert(count == 1);
+  float f = args[0];
+  return sqrtf(f);
+}
+
+float max_impl(int count, float *args) {
+  assert(count == 2);
+  float x = args[0];
+  float y = args[1];
+  return (x > y) ? x : y;
+}
+
+float min_impl(int count, float *args) {
+  assert(count == 2);
+  float x = args[0];
+  float y = args[1];
+  return (x < y) ? x : y;
 }
 
 BuiltinSlice get_builtins(void) {
   uint16_t count = 0;
 
-  builtin_storage[count++] = init_builtin("sin", 1, sinf, "def sin(x) := _builtin_sin(x)");
-  builtin_storage[count++] = init_builtin("cos", 1, cosf, "def cos(x) := _builtin_cos(x)");
-  builtin_storage[count++] = init_builtin("sqrt", 1, sqrtf, "def sqrt(x) := _builtin_sqrt(x)");
+  builtin_storage[count++] = init_builtin("sin", 1, sin_impl, "def sin(x) := _builtin_sin(x)");
+  builtin_storage[count++] = init_builtin("cos", 1, cos_impl, "def cos(x) := _builtin_cos(x)");
+  builtin_storage[count++] = init_builtin("sqrt", 1, sqrt_impl, "def sqrt(x) := _builtin_sqrt(x)");
+  builtin_storage[count++] = init_builtin("min", 2, min_impl, "def min(x, y) := _builtin_min(x, y)");
+  builtin_storage[count++] = init_builtin("max", 2, max_impl, "def max(x, y) := _builtin_max(x, y)");
 
   BuiltinSlice builtins = {
     .builtins = builtin_storage,

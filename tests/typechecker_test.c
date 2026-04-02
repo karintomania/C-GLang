@@ -85,7 +85,7 @@ void test_typechecker_happy_path(void) {
   Token tokens[MAX_TOKENS];
 
   {
-    printf("\t%s: parse math expression\n", "test_typechecker_happy_path");
+    printf("\t%s: check math expression\n", "test_typechecker_happy_path");
 
     result = run_lexer("1 + -2 / 4 - 8", tokens, &lexer_err);
 
@@ -100,7 +100,7 @@ void test_typechecker_happy_path(void) {
   }
 
   {
-    printf("\t%s: parse def\n", "test_typechecker_happy_path");
+    printf("\t%s: check definition\n", "test_typechecker_happy_path");
 
     result = run_lexer("def f(x) := x * x;f", tokens, &lexer_err);
 
@@ -110,6 +110,7 @@ void test_typechecker_happy_path(void) {
 
     Type *res = run_typechecker(ast, &type_err);
 
+    printf("%s", type_err.message);
     assert(res != NULL);
     ASSERT_EQUAL_NUM(TYPE_FUNC, res->type);
     ASSERT_EQUAL_NUM(1, res->args_len);
@@ -142,6 +143,37 @@ void test_typechecker_happy_path(void) {
 
     Type *res = run_typechecker(ast, &type_err);
 
+    assert(res != NULL);
+    ASSERT_EQUAL_NUM(TYPE_NUM, res->type);
+  }
+
+  {
+    printf("\t%s: check multi-args functions\n", "test_typechecker_happy_path");
+
+    result = run_lexer("def f(x, y) := x + y; f(1, 3);", tokens, &lexer_err);
+
+    assert(result != LEXER_ERROR);
+
+    ast = run_parser(tokens, result, &parser_err);
+
+    Type *res = run_typechecker(ast, &type_err);
+
+    assert(res != NULL);
+    ASSERT_EQUAL_NUM(TYPE_NUM, res->type);
+  }
+
+  {
+    printf("\t%s: check multi-args builtin\n", "test_typechecker_happy_path");
+
+    result = run_lexer("def f(x) := min(x, 3); f(1);", tokens, &lexer_err);
+
+    assert(result != LEXER_ERROR);
+
+    ast = run_parser(tokens, result, &parser_err);
+
+    Type *res = run_typechecker(ast, &type_err);
+
+    printf("%s: position: %d\n",  type_err.message, type_err.position);
     assert(res != NULL);
     ASSERT_EQUAL_NUM(TYPE_NUM, res->type);
   }

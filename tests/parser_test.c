@@ -16,14 +16,13 @@ void test_parser_happy_path(void) {
   uint16_t written;
   char buf[4000];
 
+  Token tokens[MAX_TOKENS];
   char err_buf[256]; 
   LexerError lexer_err = lexer_error_init(err_buf);
   ParserError parser_err = parser_error_init(err_buf);
 
   {
     printf("\t%s: parse math expression\n", "test_parser_happy_path");
-
-    Token tokens[MAX_TOKENS];
 
     token_count = run_lexer("1 + -2 / 4 - 8", tokens, &lexer_err);
 
@@ -53,8 +52,6 @@ OP:-\n\
   {
     printf("\t%s: parse minus\n", "test_parser_happy_path");
 
-    Token tokens[MAX_TOKENS];
-
     token_count = run_lexer("(1 --2) *-3", tokens, &lexer_err);
 
     ast = run_parser(tokens, token_count, &parser_err);
@@ -80,8 +77,6 @@ OP:*\n\
  {
     printf("\t%s: parse function call and vars\n", "test_parser_happy_path");
 
-    Token tokens[MAX_TOKENS];
-
     token_count = run_lexer("f(x+y)", tokens, &lexer_err);
 
     ast = run_parser(tokens, token_count, &parser_err);
@@ -105,8 +100,6 @@ CALL:f\n\
  {
     printf("\t%s: parse function definition\n", "test_parser_happy_path");
 
-    Token tokens[MAX_TOKENS];
-
     token_count = run_lexer("def f(x) := x + x", tokens, &lexer_err);
 
     ast = run_parser(tokens, token_count, &parser_err);
@@ -129,9 +122,56 @@ DEF:f, ARGS:x\n\
   }
 
  {
+    printf("\t%s: parse multi-args function definition\n", "test_parser_happy_path");
+
+    token_count = run_lexer("def f(x, y) := x + y", tokens, &lexer_err);
+
+    ast = run_parser(tokens, token_count, &parser_err);
+
+    assert(ast != NULL);
+    written = sprint_ast(ast, buf);
+
+    expected = "\
+DEF:f, ARGS:x, y\n\
+  BODY:\n\
+    OP:+\n\
+      VAR:x\n\
+      VAR:y\n\
+";
+
+    ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+
+    deinit_ast(ast);
+  }
+
+ {
+    printf("\t%s: parse multi-args function call\n", "test_parser_happy_path");
+
+
+    token_count = run_lexer("f(2, 1+1)", tokens, &lexer_err);
+
+    ast = run_parser(tokens, token_count, &parser_err);
+
+    assert(ast != NULL);
+
+    written = sprint_ast(ast, buf);
+
+    expected = "\
+CALL:f\n\
+  NUM:2\n\
+  OP:+\n\
+    NUM:1\n\
+    NUM:1\n\
+";
+
+    ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+
+    deinit_ast(ast);
+  }
+
+ {
     printf("\t%s: parse function def and call\n", "test_parser_happy_path");
 
-    Token tokens[MAX_TOKENS];
 
     token_count = run_lexer("def f(x) := x + x;\nf(2)", tokens, &lexer_err);
 
@@ -161,6 +201,7 @@ void test_parser_error(void){
   AST *ast;
   int result;
 
+  Token tokens[MAX_TOKENS];
   char err_buf[256]; 
   LexerError lexer_err = lexer_error_init(err_buf);
   ParserError parser_err = parser_error_init(err_buf);
@@ -168,7 +209,6 @@ void test_parser_error(void){
   {
     printf("\t%s: unexpected token\n", "test_parser_error");
 
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("1 + +", tokens, &lexer_err);
 
@@ -185,7 +225,6 @@ void test_parser_error(void){
   {
     printf("\t%s: expected var\n", "test_parser_error");
 
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("def 1", tokens, &lexer_err);
 
@@ -202,7 +241,6 @@ void test_parser_error(void){
   {
     printf("\t%s: unexpected eos\n", "test_parser_error");
 
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("1 + ", tokens, &lexer_err);
 
@@ -221,6 +259,7 @@ void test_parser_position(void) {
   AST *ast;
   int result;
 
+  Token tokens[MAX_TOKENS];
   char err_buf[256]; 
   LexerError lexer_err = lexer_error_init(err_buf);
   ParserError parser_err = parser_error_init(err_buf);
@@ -228,7 +267,6 @@ void test_parser_position(void) {
   {
     printf("\t%s: expression has correct positions\n", "test_parser_position");
 
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("1 + -2", tokens, &lexer_err);
 
@@ -258,7 +296,6 @@ void test_parser_position(void) {
   {
     printf("\t%s: definition has correct position\n", "test_parser_position");
 
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("def f(x) := x", tokens, &lexer_err);
 
@@ -280,7 +317,6 @@ void test_parser_position(void) {
   {
     printf("\t%s: call has correct position\n", "test_parser_position");
 
-    Token tokens[MAX_TOKENS];
 
     result = run_lexer("f (1)", tokens, &lexer_err);
 
@@ -295,7 +331,7 @@ void test_parser_position(void) {
     ASSERT_EQUAL_NUM(0, e->position);
     ASSERT_EQUAL_NUM(EXPRESSION_CALL, e->type);
 
-    Expression *args = e->call.args;
+    Expression *args = e->call.args[0];
     ASSERT_EQUAL_NUM(3, args->position);
     ASSERT_EQUAL_NUM(EXPRESSION_NUMBER, args->type);
   }

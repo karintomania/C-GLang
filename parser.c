@@ -1,3 +1,4 @@
+#include <stdint.h>
 #ifndef UNITY_BUILD
 #include "lexer.c"
 #endif
@@ -10,6 +11,7 @@
 
 // max count of statements in AST
 #define MAX_AST_STMTS 100
+#define MAX_ARGS_LEN 32
 
 enum StatementType {
   STMT_EXPR,
@@ -57,10 +59,10 @@ struct AST {
   size_t count;
 };
 
-
 struct Definition {
   char *name;
-  char *args; // TODO support multiple args later
+  char **args;
+  uint16_t args_len;
   Expression *body;
   uint16_t position;
 };
@@ -86,7 +88,8 @@ typedef struct {
 
 typedef struct {
   char *name;
-  Expression *args;
+  Expression **args;
+  uint16_t args_len;
 } ExpCall;
 
 enum ExpressionType {
@@ -130,7 +133,13 @@ void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *writ
 void print_stmt(Statement *stmt, int depth, char *out, uint16_t *written) {
   if (stmt->type == STMT_DEF) {
     Definition *def = stmt->def;
-    *written += sprintf(out + *written, "%*sDEF:%s, ARGS:%s\n", depth * 2, "", def->name, def->args);
+    *written += sprintf(out + *written, "%*sDEF:%s, ARGS:", depth * 2, "", def->name);
+
+    for (uint16_t i = 0; i < def->args_len; i++) {
+      *written += sprintf(out + *written, "%s", def->args[i]);
+      *written += sprintf(out + *written, (i == def->args_len-1) ? "\n" : ", ");
+    }
+
     *written += sprintf(out + *written, "%*sBODY:\n", ++depth * 2, "");
       print_expr_recursive(def->body, depth+1, out, written);
   } else {
@@ -180,7 +189,9 @@ void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *writ
     case EXPRESSION_CALL:
       // TODO:update here. no op for now
       *written += sprintf(out + *written, "%*sCALL:%s\n", depth * 2, "", expr->call.name);
-      print_expr_recursive(expr->call.args, depth+1, out, written);
+      for (uint16_t i = 0; i < expr->call.args_len; i++) {
+        print_expr_recursive(expr->call.args[i], depth+1, out, written);
+      }
       break;
   }
 }
@@ -217,6 +228,7 @@ int parser_token_count;
 
 AST *run_parser(Token *tokens, int token_count, ParserError *err);
 Statement *parse_statement(Token *tokens, ParserError *err);
+Definition *parse_definition(Token *tokens, ParserError *err);
 Expression *parse_expression(Token *tokens, ParserError *err);
 Expression *parse_term2(Token *tokens, ParserError *err);
 Expression *parse_term1(Token *tokens, ParserError *err);
@@ -238,6 +250,7 @@ AST *run_parser(Token *tokens, int token_count, ParserError *err) {
   parser_position = 0;
   size_t stmt_idx = 0;
   AST *ast = malloc(sizeof(AST) * MAX_AST_STMTS);
+  assert(ast != NULL);
 
   while (parser_position < token_count) {
     Statement *stmt = parse_statement(tokens, err);
@@ -263,29 +276,11 @@ Statement *parse_statement(Token *tokens, ParserError *err) {
   AST_MUST(t);
 
   if (t->type == TKN_DEF) {
-    uint16_t def_position = t->position;
-
     Statement *stmt = malloc(sizeof(Statement));
+    assert(stmt != NULL);
 
-    parser_position++;
-
-    Definition *def = malloc(sizeof(Definition));
-
-    char *name = expect_var(tokens, err);
-    AST_MUST(name);
-
-    AST_MUST(expect_token(tokens, TKN_LPAREN, err));
-
-    char *arg = expect_var(tokens, err);
-    AST_MUST(arg);
-
-    AST_MUST(expect_token(tokens, TKN_RPAREN, err));
-    AST_MUST(expect_token(tokens, TKN_ASSIGNMENT, err));
-
-    Expression *body= parse_expression(tokens, err);
-    AST_MUST(body);
-
-    *def = (Definition){.name = name, .args = arg, .body = body, .position = def_position};
+    Definition *def = parse_definition(tokens, err);
+    AST_MUST(def);
 
     *stmt = (Statement){
       .type = STMT_DEF,
@@ -295,6 +290,7 @@ Statement *parse_statement(Token *tokens, ParserError *err) {
     return stmt;
   } else {
     Statement *stmt = malloc(sizeof(Statement));
+    assert(stmt != NULL);
 
     Expression *expr = parse_expression(tokens, err);
     AST_MUST(expr);
@@ -303,6 +299,64 @@ Statement *parse_statement(Token *tokens, ParserError *err) {
 
     return stmt;
   }
+}
+
+Definition *parse_definition(Token *tokens, ParserError *err) {
+  Token *t = peek_token(tokens, err);
+  AST_MUST(t);
+
+  assert(t->type == TKN_DEF);
+
+  uint16_t def_position = t->position;
+
+  parser_position++;
+
+  Definition *def = malloc(sizeof(Definition));
+  assert(def != NULL);
+
+  char *name = expect_var(tokens, err);
+  AST_MUST(name);
+
+  AST_MUST(expect_token(tokens, TKN_LPAREN, err));
+
+  char **args = malloc(sizeof(char *) * MAX_ARGS_LEN);
+  assert(args != NULL);
+
+  uint16_t args_len = 0;
+
+  char *arg = expect_var(tokens, err);
+  AST_MUST(arg);
+
+  args[args_len++] = arg;
+
+  Token *next_t;
+  while (1) {
+    next_t = peek_token(tokens, err);
+    if (next_t->type != TKN_COMMA) {
+      break;
+    }
+    parser_position++;
+    arg = expect_var(tokens, err);
+    AST_MUST(arg);
+
+    args[args_len++] = arg;
+  };
+
+  AST_MUST(expect_token(tokens, TKN_RPAREN, err));
+  AST_MUST(expect_token(tokens, TKN_ASSIGNMENT, err));
+
+  Expression *body= parse_expression(tokens, err);
+  AST_MUST(body);
+
+  *def = (Definition){
+    .name = name,
+    .args = args,
+    .args_len = args_len,
+    .body = body,
+    .position = def_position,
+  };
+
+  return def;
 }
 
 Expression *parse_expression(Token *tokens, ParserError *err) {
@@ -316,6 +370,7 @@ Expression *parse_term2(Token *tokens, ParserError *err) {
 
   while (parser_position < parser_token_count) {
     Expression *expr = malloc(sizeof(Expression));
+    assert(expr != NULL);
 
     Token *t = peek_token(tokens, err);
     AST_MUST(t);
@@ -350,6 +405,7 @@ Expression *parse_term1(Token *tokens, ParserError *err) {
 
   while (parser_position < parser_token_count) {
     Expression *expr = malloc(sizeof(Expression));
+    assert(expr != NULL);
 
     Token *t = peek_token(tokens, err);
     AST_MUST(t);
@@ -394,6 +450,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
 
   if (t->type == TKN_MINUS) {
     Expression *expr = malloc(sizeof(Expression));
+    assert(expr != NULL);
     *expr = (Expression){
       .type = EXPRESSION_UNARY_OPERATOR,
       .position = position,
@@ -413,21 +470,47 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
       parser_position++;
       // Parse function call
       Expression *expr = malloc(sizeof(Expression));
+      assert(expr != NULL);
+      Expression **args = malloc(sizeof(Expression *) * MAX_ARGS_LEN);
+      assert(args != NULL);
+
+      uint16_t args_len = 0;
+      while (1) {
+        args[args_len++] = parse_expression(tokens, err);
+        t_next = get_token(tokens, err);
+
+        if (t_next->type == TKN_COMMA) {
+          continue;
+        }else if (t_next->type == TKN_RPAREN) {
+          break;
+        } else {
+          err->type = PARSER_ERR_UNEXPECTED_TOKEN;
+          err->position = t_next->position;
+          sprintf(
+            err->message,
+            "Expected type: %s, got %s\n",
+            token_type_name[t_next->type],
+            token_type_name[t_next->type]
+          );
+           return NULL;
+        }
+      }
+
       *expr = (Expression){
         .type = EXPRESSION_CALL,
         .position = position,
         .call = {
           .name = t->var,
-          .args = parse_expression(tokens, err)
+          .args = args,
+          .args_len = args_len,
         },
       };
-
-      AST_MUST(expect_token(tokens, TKN_RPAREN, err));
 
       return expr;
     } else {
       // Parse variable
       Expression *expr = malloc(sizeof(Expression));
+      assert(expr != NULL);
 
       *expr = (Expression){
         .type = EXPRESSION_VAR,
@@ -443,6 +526,7 @@ Expression *parse_term0(Token *tokens, ParserError *err) {
 
   if (t->type == TKN_NUMBER) {
     Expression *expr = malloc(sizeof(Expression));
+    assert(expr != NULL);
 
     *expr = (Expression){
       .type = EXPRESSION_NUMBER,

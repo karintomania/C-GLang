@@ -21,6 +21,7 @@ enum TokenType {
   TKN_VAR,
   TKN_ASSIGNMENT,
   TKN_DEF,
+  TKN_COMMA,
   TKN_SEMICOLON,
 };
 
@@ -35,6 +36,7 @@ const char *token_type_name[] = {
   "TKN_VAR",
   "TKN_ASSIGNMENT",
   "TKN_DEF",
+  "TKN_COMMA",
   "TKN_SEMICOLON",
 };
 
@@ -74,6 +76,7 @@ void token_print(const Token *t) {
   case TKN_VAR:        printf("VAR(%s)", t->var);    break;
   case TKN_ASSIGNMENT: printf("ASSIGNMENT");         break;
   case TKN_DEF:        printf("DEF");                break;
+  case TKN_COMMA:      printf("COMMA");              break;
   case TKN_SEMICOLON:  printf("SEMICOLON");          break;
   }
 }
@@ -224,6 +227,10 @@ int16_t run_lexer(const char *str, Token *tokens, LexerError *err) {
       continue;
     case ';':
       tokens[token_idx++] = (Token){.type = TKN_SEMICOLON, .position = lexer_position};
+      lexer_position++;
+      continue;
+    case ',':
+      tokens[token_idx++] = (Token){.type = TKN_COMMA, .position = lexer_position};
       lexer_position++;
       continue;
     }

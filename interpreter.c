@@ -15,7 +15,8 @@ enum ValueType {
 
 struct Function {
   char *name;
-  char *args;
+  char **args;
+  uint16_t args_len;
   Expression *body;
 };
 
@@ -84,17 +85,28 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, 
   }
 
   if (expr->type == EXPRESSION_CALL) {
-    float value = expectNumber(interpretExpression(expr->call.args, dm, assignment, bm));
+    uint16_t args_len = expr->call.args_len;
 
     if (shgeti(dm, expr->call.name) != -1) {
       Definition *d = shget(dm, expr->call.name);
+      Assignment *local_assignment = NULL; // create a local assignment to prevent name conflict
 
-      shput(assignment, d->args, value);
+      for (uint16_t i = 0; i < args_len; i ++) {
+        float value = expectNumber(interpretExpression(expr->call.args[i], dm, assignment, bm));
 
-      return interpretExpression(d->body, dm, assignment, bm);
+        shput(local_assignment, d->args[i], value);
+      }
+
+      return interpretExpression(d->body, dm, local_assignment, bm);
     } else if (shgeti(bm, expr->var.name) != -1) {
+      float args[expr->call.args_len];
+
+      for (uint16_t i = 0; i < args_len; i ++) {
+        args[i] = expectNumber(interpretExpression(expr->call.args[i], dm, assignment, bm));
+      }
+
       Builtin *b = shget(bm, expr->var.name);
-      float res = b->body(value);
+      float res = b->body(expr->call.args_len, args);
 
       return (Value){.type = VAL_NUM, .num = res};
     } else  {
@@ -112,6 +124,7 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, 
         .type = VAL_FUNC,
         .func = (Function){
           .args = def->args,
+          .args_len = def->args_len,
           .name = expr->var.name,
           .body = def->body,
         },
