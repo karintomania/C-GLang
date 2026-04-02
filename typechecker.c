@@ -348,7 +348,7 @@ Builtin builtin_storage[128];
 
 Builtin init_builtin(
   const char *name,
-  uint16_t arg_len,
+  uint16_t args_len,
   float (*body)(int count, float *args),
   const char *def
 ) {
@@ -361,9 +361,9 @@ Builtin init_builtin(
   sprintf(impl_name, "_builtin_%s", name);
 
   Type *type = malloc(sizeof(Type));
-  Type **args = malloc(sizeof(Type *) * arg_len);
+  Type **args = malloc(sizeof(Type *) * args_len);
 
-  for (size_t i=0; i < arg_len; i++) {
+  for (uint16_t i=0; i < args_len; i++) {
     // currenlty all args are number type
     args[i] = &type_number;
   }
@@ -371,10 +371,9 @@ Builtin init_builtin(
   *type = (Type){
     .type = TYPE_FUNC,
     .args = args,
-    .args_len = 1,
+    .args_len = args_len,
     .result = &type_number
   };
-  
 
   Token tokens[128] = {0};
   char err_buf[256] = {0};
@@ -396,7 +395,7 @@ Builtin init_builtin(
     .impl_name = impl_name,
     .def = d,
     .type = type,
-    .args_len = 1,
+    .args_len = args_len,
     .body = body,
   };
 }
@@ -419,12 +418,28 @@ float sqrt_impl(int count, float *args) {
   return sqrtf(f);
 }
 
+float max_impl(int count, float *args) {
+  assert(count == 2);
+  float x = args[0];
+  float y = args[1];
+  return (x > y) ? x : y;
+}
+
+float min_impl(int count, float *args) {
+  assert(count == 2);
+  float x = args[0];
+  float y = args[1];
+  return (x < y) ? x : y;
+}
+
 BuiltinSlice get_builtins(void) {
   uint16_t count = 0;
 
   builtin_storage[count++] = init_builtin("sin", 1, sin_impl, "def sin(x) := _builtin_sin(x)");
   builtin_storage[count++] = init_builtin("cos", 1, cos_impl, "def cos(x) := _builtin_cos(x)");
   builtin_storage[count++] = init_builtin("sqrt", 1, sqrt_impl, "def sqrt(x) := _builtin_sqrt(x)");
+  builtin_storage[count++] = init_builtin("min", 2, min_impl, "def min(x, y) := _builtin_min(x, y)");
+  builtin_storage[count++] = init_builtin("max", 2, max_impl, "def max(x, y) := _builtin_max(x, y)");
 
   BuiltinSlice builtins = {
     .builtins = builtin_storage,

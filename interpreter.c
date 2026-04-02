@@ -98,7 +98,10 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, 
       return interpretExpression(d->body, dm, assignment, bm);
     } else if (shgeti(bm, expr->var.name) != -1) {
       float args[expr->call.args_len];
-      args[0] = expectNumber(interpretExpression(expr->call.args[0], dm, assignment, bm));
+
+      for (uint16_t i = 0; i < args_len; i ++) {
+        args[i] = expectNumber(interpretExpression(expr->call.args[i], dm, assignment, bm));
+      }
 
       Builtin *b = shget(bm, expr->var.name);
       float res = b->body(expr->call.args_len, args);

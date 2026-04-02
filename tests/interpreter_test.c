@@ -149,5 +149,31 @@ int test_run_interpreter(void) {
     ASSERT_EQUAL_NUM(4, res.num);
   }
 
+  {
+    printf("\t%s: interpret multi-args builtin - max\n", "test_run_interpreter");
+
+    token_count = run_lexer("max(1, 3);", tokens, &lexer_err);
+    ast = run_parser(tokens, token_count, &parser_err);
+    assert(NULL != run_typechecker(ast, &type_err));
+    interpret_res = interpret(ast);
+    Value res = interpret_res.v;
+
+    assert(VAL_NUM == res.type);
+    ASSERT_EQUAL_NUM(3, res.num);
+  }
+
+  {
+    printf("\t%s: interpret multi-args builtin - max 2\n", "test_run_interpreter");
+
+    token_count = run_lexer("max(4.1, -1);", tokens, &lexer_err);
+    ast = run_parser(tokens, token_count, &parser_err);
+    assert(NULL != run_typechecker(ast, &type_err));
+    interpret_res = interpret(ast);
+    Value res = interpret_res.v;
+
+    assert(VAL_NUM == res.type);
+    ASSERT_EQUAL_NUM(4.1, res.num);
+  }
+
   return 1;
 }
