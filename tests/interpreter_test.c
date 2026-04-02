@@ -136,5 +136,18 @@ int test_run_interpreter(void) {
     ASSERT_EQUAL_NUM(0, res.num);
   }
 
+  {
+    printf("\t%s: interpret multi-args func\n", "test_run_interpreter");
+
+    token_count = run_lexer("def f(x, y) := x + y;f(1, 3);", tokens, &lexer_err);
+    ast = run_parser(tokens, token_count, &parser_err);
+    assert(NULL != run_typechecker(ast, &type_err));
+    interpret_res = interpret(ast);
+    Value res = interpret_res.v;
+
+    assert(VAL_NUM == res.type);
+    ASSERT_EQUAL_NUM(4, res.num);
+  }
+
   return 1;
 }

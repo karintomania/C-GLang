@@ -88,8 +88,7 @@ struct Builtin {
   Type *type;
   Definition *def;
   uint16_t args_len;
-  float (*body)(float);
-  float (*body2)(float, float);
+  float (*body)(int count, float *args);
 };
 
 typedef struct {
@@ -350,7 +349,7 @@ Builtin builtin_storage[128];
 Builtin init_builtin(
   const char *name,
   uint16_t arg_len,
-  float (*body)(float),
+  float (*body)(int count, float *args),
   const char *def
 ) {
   char *owned_name = strndup(name, strlen(name)+1);
@@ -402,12 +401,30 @@ Builtin init_builtin(
   };
 }
 
+float sin_impl(int count, float *args) {
+  assert(count == 1);
+  float f = args[0];
+  return sinf(f);
+}
+
+float cos_impl(int count, float *args) {
+  assert(count == 1);
+  float f = args[0];
+  return cosf(f);
+}
+
+float sqrt_impl(int count, float *args) {
+  assert(count == 1);
+  float f = args[0];
+  return sqrtf(f);
+}
+
 BuiltinSlice get_builtins(void) {
   uint16_t count = 0;
 
-  builtin_storage[count++] = init_builtin("sin", 1, sinf, "def sin(x) := _builtin_sin(x)");
-  builtin_storage[count++] = init_builtin("cos", 1, cosf, "def cos(x) := _builtin_cos(x)");
-  builtin_storage[count++] = init_builtin("sqrt", 1, sqrtf, "def sqrt(x) := _builtin_sqrt(x)");
+  builtin_storage[count++] = init_builtin("sin", 1, sin_impl, "def sin(x) := _builtin_sin(x)");
+  builtin_storage[count++] = init_builtin("cos", 1, cos_impl, "def cos(x) := _builtin_cos(x)");
+  builtin_storage[count++] = init_builtin("sqrt", 1, sqrt_impl, "def sqrt(x) := _builtin_sqrt(x)");
 
   BuiltinSlice builtins = {
     .builtins = builtin_storage,

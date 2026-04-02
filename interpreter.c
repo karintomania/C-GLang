@@ -85,18 +85,23 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, 
   }
 
   if (expr->type == EXPRESSION_CALL) {
-    float value = expectNumber(interpretExpression(expr->call.args, dm, assignment, bm));
-
+    uint16_t args_len = expr->call.args_len;
     if (shgeti(dm, expr->call.name) != -1) {
       Definition *d = shget(dm, expr->call.name);
 
-      // TODO: multi args
-      shput(assignment, d->args[0], value);
+      for (uint16_t i = 0; i < args_len; i ++) {
+        float value = expectNumber(interpretExpression(expr->call.args[i], dm, assignment, bm));
+
+        shput(assignment, d->args[i], value);
+      }
 
       return interpretExpression(d->body, dm, assignment, bm);
     } else if (shgeti(bm, expr->var.name) != -1) {
+      float args[expr->call.args_len];
+      args[0] = expectNumber(interpretExpression(expr->call.args[0], dm, assignment, bm));
+
       Builtin *b = shget(bm, expr->var.name);
-      float res = b->body(value);
+      float res = b->body(expr->call.args_len, args);
 
       return (Value){.type = VAL_NUM, .num = res};
     } else  {

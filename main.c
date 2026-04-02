@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdint.h>
 #define UNITY_BUILD
 
 #include <stdio.h>
@@ -15,6 +16,13 @@
 void print_graph(Function f, int16_t min, int16_t max, DefMap *dm, BuiltinMap *bm);
 int read_file(FILE *in, char *buf);
 void usage(void);
+
+// TODO: this works only when the program is one-liner
+#define PRINT_ERR(program, err_name, err) \
+      fprintf(stderr, "%s\n", program); \
+      fprintf(stderr, "%*s^\n", err.position, ""); \
+      fprintf(stderr, "%s: %s\n", err_name, err.message); \
+      exit(1);
 
 bool check_type = true;
 
@@ -65,19 +73,12 @@ int main (int argc, char *argv[]) {
   int token_count = run_lexer(program, tokens, &lexer_err);
 
   if (token_count == LEXER_ERROR) {
-    // TODO: this works only when the program is one-liner
-    fprintf(stderr, "%s\n", program);
-    fprintf(stderr, "%*s^\n", lexer_err.position, "");
-    fprintf(stderr, "Lexer Error: %s\n", lexer_err.message);
-    return 1;
+    PRINT_ERR(program, "Lexer Error", lexer_err);
   }
 
   AST *ast = run_parser(tokens, token_count, &parser_err);
   if (ast == NULL) {
-    fprintf(stderr, "%s\n", program);
-    fprintf(stderr, "%*s^\n", parser_err.position, "");
-    fprintf(stderr, "Parser Error: %s\n", parser_err.message);
-    return 1;
+      PRINT_ERR(program, "Parse Error", parser_err);
   }
 
   if (check_type) {
@@ -85,10 +86,7 @@ int main (int argc, char *argv[]) {
     Type *res = run_typechecker(ast, &type_err);
 
     if (res == NULL) {
-      fprintf(stderr, "%s\n", program);
-      fprintf(stderr, "%*s^\n", type_err.position, "");
-      fprintf(stderr, "Type Error: %s\n", type_err.message);
-      return 1;
+      PRINT_ERR(program, "Type Error", type_err);
     }
   }
 
@@ -125,6 +123,11 @@ int read_file(FILE *in, char *buf) {
 }
 
 void print_graph(Function f, int16_t min, int16_t max, DefMap *dm, BuiltinMap *bm) {
+  if (f.args_len > 1) {
+    fprintf(stderr, "Printing graph is only available for functions with 1 argument.\n");
+    exit(1);
+  }
+
   FILE *gnuplot = popen("gnuplot -persist", "w");
 
   if (gnuplot == NULL) {
@@ -148,7 +151,7 @@ void print_graph(Function f, int16_t min, int16_t max, DefMap *dm, BuiltinMap *b
     float x = min + i * step;
 
     Assignment *assignment = NULL;
-    shput(assignment, f.args, (float)x);
+    shput(assignment, f.args[0], (float)x);
     float num = expectNumber(interpretExpression(f.body, dm, assignment, bm));
     fprintf(gnuplot, "%g %g\n", x, num);
   }
