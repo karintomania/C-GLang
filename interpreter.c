@@ -86,16 +86,18 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, 
 
   if (expr->type == EXPRESSION_CALL) {
     uint16_t args_len = expr->call.args_len;
+
     if (shgeti(dm, expr->call.name) != -1) {
       Definition *d = shget(dm, expr->call.name);
+      Assignment *local_assignment = NULL; // create a local assignment to prevent name conflict
 
       for (uint16_t i = 0; i < args_len; i ++) {
         float value = expectNumber(interpretExpression(expr->call.args[i], dm, assignment, bm));
 
-        shput(assignment, d->args[i], value);
+        shput(local_assignment, d->args[i], value);
       }
 
-      return interpretExpression(d->body, dm, assignment, bm);
+      return interpretExpression(d->body, dm, local_assignment, bm);
     } else if (shgeti(bm, expr->var.name) != -1) {
       float args[expr->call.args_len];
 
