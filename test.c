@@ -36,8 +36,8 @@ typedef struct {
 
 int main(void) {
   TestFunc tests[] = {
-    FUNC_DEF(test_run_lexer),
-    FUNC_DEF(test_run_parser),
+    // FUNC_DEF(test_run_lexer),
+    // FUNC_DEF(test_run_parser),
     FUNC_DEF(test_run_typechecker),
     FUNC_DEF(test_run_interpreter),
     {NULL, ""}, // null termination

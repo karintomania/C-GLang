@@ -161,6 +161,16 @@ Value interpretExpression(Expression *expr, DefMap *dm, Assignment *assignment, 
     return (Value){.type = VAL_NUM, .num =  value};
   }
 
+  if (expr->type == EXPRESSION_COND) {
+    float cond = expectNumber(interpretExpression(expr->cond.condition, dm, assignment, bm));
+
+    if (cond > 0) {
+      return interpretExpression(expr->cond.then, dm, assignment, bm);
+    } else {
+      return interpretExpression(expr->cond.else_e, dm, assignment, bm);
+    }
+  }
+
   printf("unknown ast.");
   assert(0);
 }

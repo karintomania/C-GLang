@@ -79,6 +79,12 @@ typedef struct {
 } ExpUnaryOperator;
 
 typedef struct {
+  Expression *condition;
+  Expression *then;
+  Expression *else_e; // can't use else as it's reserved
+} ExpCond;
+
+typedef struct {
   float number;
 } ExpNumber;
 
@@ -98,6 +104,7 @@ enum ExpressionType {
   EXPRESSION_NUMBER,
   EXPRESSION_VAR,
   EXPRESSION_CALL,
+  EXPRESSION_COND,
 };
 
 struct Expression {
@@ -109,6 +116,7 @@ struct Expression {
     ExpNumber num;
     ExpVar var;
     ExpCall call;
+    ExpCond cond;
   };
 };
 
@@ -178,6 +186,13 @@ void print_expr_recursive(Expression *expr, int depth, char *out, uint16_t *writ
 
       *written += sprintf(out + *written, "%*sOP:-u\n", depth * 2, "");
       print_expr_recursive(expr->uo.operand, depth+1, out, written);
+
+      break;
+    case EXPRESSION_COND:
+      *written += sprintf(out + *written, "%*sCOND:\n", depth * 2, "");
+      print_expr_recursive(expr->cond.condition, depth+1, out, written);
+      print_expr_recursive(expr->cond.then, depth+1, out, written);
+      print_expr_recursive(expr->cond.else_e, depth+1, out, written);
 
       break;
     case EXPRESSION_NUMBER:
@@ -360,7 +375,32 @@ Definition *parse_definition(Token *tokens, ParserError *err) {
 }
 
 Expression *parse_expression(Token *tokens, ParserError *err) {
-  return parse_term2(tokens, err);
+  Expression *term2 = parse_term2(tokens, err);
+  AST_MUST(term2);
+
+  Token *t = peek_token(tokens, err);
+
+  if (t != NULL && t->type == TKN_QUESTION) {
+    parser_position++;
+    Expression *then = parse_expression(tokens, err);
+    AST_MUST(expect_token(tokens, TKN_COLON, err));
+    Expression *else_e = parse_expression(tokens, err);
+
+    Expression *expr = malloc(sizeof(Expression));
+
+    *expr = (Expression) {
+      .type = EXPRESSION_COND,
+      .position = term2->position,
+      .cond = (ExpCond){
+        .condition = term2,
+        .then = then,
+        .else_e = else_e,
+      },
+    };
+    return expr;
+  } else {
+    return term2;
+  }
 }
 
 Expression *parse_term2(Token *tokens, ParserError *err) {

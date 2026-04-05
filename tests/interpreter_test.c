@@ -175,5 +175,43 @@ int test_run_interpreter(void) {
     ASSERT_EQUAL_NUM(4.1, res.num);
   }
 
+  {
+    printf("\t%s: interpret conditional - then\n", "test_run_interpreter");
+
+    token_count = run_lexer("def f(x) := x ? x * 2 : -x * 3; f(2);", tokens, &lexer_err);
+    ast = run_parser(tokens, token_count, &parser_err);
+    assert(NULL != run_typechecker(ast, &type_err));
+    interpret_res = interpret(ast);
+    Value res = interpret_res.v;
+
+    assert(VAL_NUM == res.type);
+    ASSERT_EQUAL_NUM(4, res.num);
+  }
+
+  {
+    printf("\t%s: interpret conditional - else\n", "test_run_interpreter");
+
+    token_count = run_lexer("def f(x) := x ? x * 2 : -x * 3; f(-2);", tokens, &lexer_err);
+    ast = run_parser(tokens, token_count, &parser_err);
+    assert(NULL != run_typechecker(ast, &type_err));
+    interpret_res = interpret(ast);
+    Value res = interpret_res.v;
+
+    assert(VAL_NUM == res.type);
+    ASSERT_EQUAL_NUM(6, res.num);
+  }
+
+  {
+    printf("\t%s: interpret recursive\n", "test_run_interpreter");
+
+    token_count = run_lexer("def f(x) := x ? x + f(x-1) : x; f(5);", tokens, &lexer_err);
+    ast = run_parser(tokens, token_count, &parser_err);
+    assert(NULL != run_typechecker(ast, &type_err));
+    interpret_res = interpret(ast);
+    Value res = interpret_res.v;
+
+    assert(VAL_NUM == res.type);
+    ASSERT_EQUAL_NUM(15, res.num);
+  }
   return 1;
 }
