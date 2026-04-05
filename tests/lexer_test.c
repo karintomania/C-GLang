@@ -136,6 +136,22 @@ void test_lexer_happy_paths(void) {
     assert_token_equals(&(Token){.type = TKN_MINUS},             &tokens[9]);
     assert_token_equals(&(Token){.type = TKN_VAR, .var = "y"},   &tokens[10]);
   }
+
+  {
+    printf("\t%s: condition\n", "test_lexer_happy_paths");
+
+    str = "-1 ? 2:0";
+    token_count = run_lexer(str, tokens, &err);
+
+    ASSERT_EQUAL_NUM(6, token_count);
+
+    assert_token_equals(&(Token){.type = TKN_MINUS},            &tokens[0]);
+    assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 1}, &tokens[1]);
+    assert_token_equals(&(Token){.type = TKN_QUESTION},         &tokens[2]);
+    assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 2}, &tokens[3]);
+    assert_token_equals(&(Token){.type = TKN_COLON},            &tokens[4]);
+    assert_token_equals(&(Token){.type = TKN_NUMBER, .num = 0}, &tokens[5]);
+  }
 }
 
 void test_lexer_errors(void) {
@@ -145,7 +161,7 @@ void test_lexer_errors(void) {
   char error_message_buf[256]; 
   LexerError err = lexer_error_init(error_message_buf);
 
- {
+  {
     printf("\t%s: handle error\n", "test_lexer_errors");
 
     str = "def f(x) = 1-x";
@@ -156,6 +172,7 @@ void test_lexer_errors(void) {
     ASSERT_EQUAL_NUM(9, err.position);
     ASSERT_EQUAL_NUM(LEXER_ERR_UNEXPECTED_CHAR, err.type);
   }
+
 }
 
 int test_run_lexer(void) {

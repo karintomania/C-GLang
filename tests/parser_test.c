@@ -172,7 +172,6 @@ CALL:f\n\
  {
     printf("\t%s: parse function def and call\n", "test_parser_happy_path");
 
-
     token_count = run_lexer("def f(x) := x + x;\nf(2)", tokens, &lexer_err);
 
     ast = run_parser(tokens, token_count, &parser_err);
@@ -189,6 +188,32 @@ DEF:f, ARGS:x\n\
       VAR:x\n\
 CALL:f\n\
   NUM:2\n\
+";
+
+    ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));
+
+    deinit_ast(ast);
+  }
+
+ {
+    printf("\t%s: parse conditional\n", "test_parser_happy_path");
+
+    token_count = run_lexer("1 ? 2:0", tokens, &lexer_err);
+
+    ast = run_parser(tokens, token_count, &parser_err);
+
+    printf("%s\n", parser_err.message);
+    printf("%d\n", parser_err.position);
+    assert(ast != NULL);
+    print_ast(ast);
+
+    written = sprint_ast(ast, buf);
+
+    expected = "\
+COND:\n\
+  NUM:1\n\
+  NUM:2\n\
+  NUM:0\n\
 ";
 
     ASSERT_EQUAL_NUM(0, (strncmp(buf, expected, written)));

@@ -182,7 +182,6 @@ Type *typecheck_expression(
   }
 
   if (expr->type == EXPRESSION_BINARY_OPERATOR) {
-    // TODO: null check
     TYPE_MUST(typecheck_expression(expr->bo.left, &type_number, def_map, assignment_map, err));
     TYPE_MUST(typecheck_expression(expr->bo.right, &type_number, def_map, assignment_map, err));
 
@@ -192,12 +191,26 @@ Type *typecheck_expression(
   if (expr->type == EXPRESSION_UNARY_OPERATOR) {
     Type *operand  = malloc(sizeof(Type));
 
-    // TODO: null check
     operand = typecheck_expression(expr->uo.operand, &type_number, def_map, assignment_map, err);
 
     TYPE_MUST(operand);
 
     return operand;
+  }
+
+  if (expr->type == EXPRESSION_COND) {
+    TYPE_MUST(typecheck_expression(expr->cond.condition, &type_number, def_map, assignment_map, err));
+
+    Type *then_type = typecheck_expression(expr->cond.then, &type_unknown, def_map, assignment_map, err);
+    TYPE_MUST(then_type);
+
+    Type *else_type = typecheck_expression(expr->cond.else_e, &type_unknown, def_map, assignment_map, err);
+    TYPE_MUST(else_type);
+
+    Type *unified_then_else = unify(then_type, else_type, position, err);
+    TYPE_MUST(unify(unified_then_else, &type_number, position, err));
+
+    return &type_number;
   }
 
   if (expr->type == EXPRESSION_VAR) {

@@ -136,7 +136,7 @@ void print_graph(Function f, int16_t min, int16_t max, DefMap *dm, BuiltinMap *b
     exit(1);
   }
 
-  fprintf(gnuplot, "plot '-' with linespoints title 'function<%s>'\n", f.name);
+  fprintf(gnuplot, "plot '-' with lines title 'function<%s>'\n", f.name);
 
   if (max <= min) {
     fprintf(stderr, "max (%d) should be more than min (%d).\n", max, min);

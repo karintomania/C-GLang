@@ -23,6 +23,8 @@ enum TokenType {
   TKN_DEF,
   TKN_COMMA,
   TKN_SEMICOLON,
+  TKN_QUESTION,
+  TKN_COLON,
 };
 
 const char *token_type_name[] = {
@@ -38,6 +40,8 @@ const char *token_type_name[] = {
   "TKN_DEF",
   "TKN_COMMA",
   "TKN_SEMICOLON",
+  "TKN_QUESTION",
+  "TKN_COLON",
 };
 
 enum LexerErrorType {
@@ -78,6 +82,8 @@ void token_print(const Token *t) {
   case TKN_DEF:        printf("DEF");                break;
   case TKN_COMMA:      printf("COMMA");              break;
   case TKN_SEMICOLON:  printf("SEMICOLON");          break;
+  case TKN_QUESTION:   printf("QUESTION");           break;
+  case TKN_COLON:      printf("COLLON");             break;
   }
 }
 
@@ -231,6 +237,14 @@ int16_t run_lexer(const char *str, Token *tokens, LexerError *err) {
       continue;
     case ',':
       tokens[token_idx++] = (Token){.type = TKN_COMMA, .position = lexer_position};
+      lexer_position++;
+      continue;
+    case '?':
+      tokens[token_idx++] = (Token){.type = TKN_QUESTION, .position = lexer_position};
+      lexer_position++;
+      continue;
+    case ':':
+      tokens[token_idx++] = (Token){.type = TKN_COLON, .position = lexer_position};
       lexer_position++;
       continue;
     }
