@@ -70,3 +70,6 @@ If the program returns a function, C-GLang plots its graph. Only single-argument
 def g(x) := f(1000,x); \
 g;"
 ```
+
+<img width="723" height="627" alt="Screenshot 2026-04-07 at 09 55 28" src="https://github.com/user-attachments/assets/aa5b607a-18bc-4028-b9f8-7bfe86b20abf" />
+
